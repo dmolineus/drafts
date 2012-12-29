@@ -1,0 +1,65 @@
+
+.tl_warning
+{
+	margin: 0 0 12px;
+	padding: 6px;
+	padding-left: 25px;
+	overflow: hidden;
+	background: #FFD;
+	border: 1px solid #D49822;
+	background: #FAEEEE url("error.png") no-repeat 5px center;
+	
+}
+
+.draft_label
+{
+	display: inline-block;
+	padding: 1px 3px 2px;
+	line-height: 1;
+	color: #fff;
+	border-radius: 3px;
+	margin-left: 5px;
+}
+
+.draft_label.new
+{
+	background: #136FBA;
+}
+
+.draft_label.sorted
+{
+	background: #086114;
+}
+
+.draft_label.modified
+{
+	background: #DE9D04;
+}
+
+.draft_label.delete
+{
+	background: #A10D0D;	
+}
+
+.draft_label.visibility
+{
+	background: #595959;	
+}
+
+.header_draft, .header_live
+{
+	padding: 2px 0 3px 20px;
+	background-position: left center;
+	background-repeat: no-repeat;
+	margin-left: 15px;
+}
+
+.header_draft 
+{
+	background-image: url('draftmode.png');
+}
+
+.header_live
+{
+	background-image: url('livemode.png');
+}
