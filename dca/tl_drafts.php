@@ -22,7 +22,8 @@ $GLOBALS['TL_DCA']['tl_drafts'] = array
 		'ptable'                      => '',
 		'ctable'                      => array('tl_content'),
 		'dynamicPtable'               => true,
-		'onload_callback'             => array(
+		'onload_callback'             => array
+		(
 			array('tl_drafts', 'goToPtable')
 		),
 		
