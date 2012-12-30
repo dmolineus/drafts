@@ -23,6 +23,7 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 	$GLOBALS['TL_DCA']['tl_content']['config']['oncreate_callback'][] 			= array('Netzmacht\Drafts\DataContainer\Content', 'onCreateCallback');
 	$GLOBALS['TL_DCA']['tl_content']['config']['onsubmit_callback'][] 			= array('Netzmacht\Drafts\DataContainer\Content', 'onSubmitCallback');
 	$GLOBALS['TL_DCA']['tl_content']['config']['oncut_callback'][] 				= array('Netzmacht\Drafts\DataContainer\Content', 'onCutCallback');
+	
 	$GLOBALS['TL_DCA']['tl_content']['fields']['invisible']['save_callback'][] 	= array('Netzmacht\Drafts\DataContainer\Content', 'onToggleVisibility');
 	
 	if(Input::get('draft') == '1')
@@ -109,6 +110,9 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 				'button_rules' 		=> array('hasAccess:alexf=published:ptable', 'draftState', 'generate'),
 			),
 		));
+		
+		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['toggle']['button_callback'] = array('Netzmacht\Drafts\DataContainer\Content', 'generateButtonToggle');
+		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['toggle']['button_rules']	= array('toggleIcon:field=invisible:inverted', 'generate');
 	}
 	else
 	{
