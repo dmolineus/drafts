@@ -581,15 +581,16 @@ abstract class DraftsDataContainer extends DataContainer
 		{
 			$objModel = $strModelClass::findByPK($this->intId);
 			$arrState = unserialize($objModel->draftState);
-			
-			if($blnVisible == $objModel->invisible || (is_array($arrState) && in_array('visibility', $arrState)))
-			{
+
+			if($blnVisible == ($objModel->invisible == '1') || (is_array($arrState) && in_array('visibility', $arrState)))
+			{				
 				return $blnVisible;
 			}
 			
 			$arrState[] = 'visibility';
 			
 			$objModel->draftState = $arrState;
+			$objModel->invisible = $blnVisible;
 			$objModel->tstamp = time();
 			$objModel->save();
 		}
@@ -616,19 +617,10 @@ abstract class DraftsDataContainer extends DataContainer
 					$objModel->draftState = $arrState;
 				}
 				
-				if($GLOBALS['TL_DCA'][$this->strTable]['config']['enableVersioning'])
-				{
-					//$this->createInitialVersion($this->strTable, $objDc->activeRecord->draftid);
-				}
-				
 				$objModel->invisible = $blnVisible;
 				$objModel->tstamp = time();
 				$objModel->save();
 
-				if($GLOBALS['TL_DCA'][$this->strTable]['config']['enableVersioning'])
-				{
-					//$this->createNewVersion($this->strTable, $objDc->activeRecord->draftid);
-				}
 			}
 		}
 		
