@@ -730,6 +730,32 @@ abstract class DraftsDataContainer extends DataContainer
 
 
 	/**
+	 * add draft id to url or hide button
+	 *
+	 * @param string the button name 
+	 * @param string href
+	 * @param string label
+	 * @param string title
+	 * @param string icon class
+	 * @param string added attributes
+	 * @param array option data row of operation buttons
+	 * @return bool true
+	 */
+	protected function buttonRuleAddDraftId(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
+	{
+		if($this->objDraft === null)
+		{
+			return false;
+		}
+		
+		$strHref .= '&id=' . $this->objDraft->id;
+		$strLabel = $GLOBALS['TL_LANG'][$this->strTable]['task_edit'][0];
+		$strTitel = $GLOBALS['TL_LANG'][$this->strTable]['task_edit'][1];
+		return true;
+	}
+
+
+	/**
 	 * decide which buttons can be displays depending on draft state
 	 *
 	 * @param string the button name 
@@ -886,7 +912,7 @@ abstract class DraftsDataContainer extends DataContainer
 	{
 		// try to find draft in live mode
 		if(!$this->blnDraftMode)
-		{
+		{			
 			if(in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create'))
 			{
 				$this->objDraft = DraftsModel::findOneByPidAndTable($this->intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);				
@@ -987,7 +1013,11 @@ abstract class DraftsDataContainer extends DataContainer
 		$arrAttributes['alexf'] = 'published';
 		$blnHasAccess = $this->genericHasAccess($arrAttributes);
 		
-		\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][!$this->isPublished() ? 2 : ($blnHasAccess ? 1 : 0)] . '</p>');
+		if($this->strAction != 'task')
+		{
+			$intState = !$this->isPublished() ? 2 : ($blnHasAccess ? 1 : 0);
+			\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][$intState] . '</p>');			
+		}
 
 		if($blnHasAccess || !$this->isPublished())
 		{

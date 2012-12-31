@@ -33,7 +33,7 @@ class DraftsModel extends Model
 	public static function findOneByPidAndTable($intPid, $strParentTable)
 	{
 		$t = static::$strTable;
-		$arrColumns = array("$t.pid=? AND ptable=?");
+		$arrColumns = array("$t.pid=? AND $t.ptable=?");
 
 		return static::findOneBy($arrColumns, array($intPid, $strParentTable));
 	}

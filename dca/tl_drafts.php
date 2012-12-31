@@ -49,6 +49,10 @@ $GLOBALS['TL_DCA']['tl_drafts'] = array
 		(
 			'sql'                     => "int(10) unsigned NOT NULL default '0'"
 		),
+		'taskid' => array
+		(
+			'sql'                     => "int(10) unsigned NOT NULL default '0'"
+		),
 		'ptable' => array
 		(
 			'sql'                     => "varchar(64) NOT NULL default ''"

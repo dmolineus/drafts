@@ -46,7 +46,7 @@
 	background: #595959;	
 }
 
-.header_draft, .header_live
+.header_draft, .header_live, .header_task
 {
 	padding: 2px 0 3px 20px;
 	background-position: left center;
@@ -62,4 +62,9 @@
 .header_live
 {
 	background-image: url('livemode.png');
+}
+
+.header_task
+{
+	background-image: url('../../tasks/html/icon.gif');
 }
