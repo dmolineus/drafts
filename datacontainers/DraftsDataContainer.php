@@ -832,11 +832,11 @@ abstract class DraftsDataContainer extends DataContainer
 		
 		if(isset($arrAttributes['draft']))
 		{
-			$strHref .= ($this->objDraft === null) ? ('&mode=create&id=' . $this->intId) : ('&id=' . $this->objDraft->id);
+			$strHref .= '&table=' . $this->strTable . (($this->objDraft === null) ? ('&mode=create&id=' . $this->intId) : ('&id=' . $this->objDraft->id));
 			return true;	
 		}
 
-		$strHref .= '&id=' . $this->objDraft->pid;	
+		$strHref .= '&table=' . $this->strTable . '&id=' . $this->objDraft->pid;	
 		return true;
 	}
 	
