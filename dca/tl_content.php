@@ -78,7 +78,7 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 		'task' => array
 		(
 			'label' 			=> &$GLOBALS['TL_LANG']['tl_content']['task'],
-			'href' 				=> 'key=task',
+			'href' 				=> 'contao/main.php?do=' . Input::get('do') . '&key=task',
 			'class'				=> 'header_task',
 			'button_callback' 	=> array('Netzmacht\Drafts\DataContainer\Content', 'generateGlobalButtonTask'),
 			'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate'),
