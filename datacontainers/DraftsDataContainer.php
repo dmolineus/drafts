@@ -741,9 +741,10 @@ abstract class DraftsDataContainer extends DataContainer
 	 * @param array option data row of operation buttons
 	 * @return bool true
 	 */
-	protected function buttonRuleAddDraftId(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
+	protected function buttonRuleTaskButton(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		if($this->objDraft === null)
+		$this->import('Config');
+		if($this->objDraft === null || !in_array('tasks', $this->Config->getActiveModules()))
 		{
 			return false;
 		}

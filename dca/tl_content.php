@@ -73,6 +73,15 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 			'class'				=> 'header_draft',
 			'button_callback' 	=> array('Netzmacht\Drafts\DataContainer\Content', 'generateGlobalButtonDraft'),
 			'button_rules' 		=> array('validate:get:var=draft:not=1', 'switchMode:draft', 'generate'),
+		),
+		
+		'task' => array
+		(
+			'label' 			=> &$GLOBALS['TL_LANG']['tl_content']['task'],
+			'href' 				=> 'key=task',
+			'class'				=> 'header_task',
+			'button_callback' 	=> array('Netzmacht\Drafts\DataContainer\Content', 'generateGlobalButtonTask'),
+			'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate'),
 		)
 	));
 	
@@ -132,19 +141,17 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['cut']['button_callback'] 	= array('Netzmacht\Drafts\DataContainer\Content', 'generateButtonCut');
 		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['cut']['button_rules']		= array('hasAccessOnPublished', 'generate');
 	}
-	
-	
-	// fields
-	$GLOBALS['TL_DCA']['tl_content']['fields']['draftid'] = array
-	(
-		'sql' 						=> 'int(10) unsigned NULL',
-		'foreignKey'				=> 'tl_content.id',
-		'relation'                	=> array('type'=>'hasOne', 'load'=>'lazy'),
-	);
-	
-	$GLOBALS['TL_DCA']['tl_content']['fields']['draftState'] = array
-	(
-		'sql' 						=> "varchar(255) NOT NULL default ''",
-	);
-	
 }
+
+// fields
+$GLOBALS['TL_DCA']['tl_content']['fields']['draftid'] = array
+(
+	'sql' 						=> 'int(10) unsigned NULL',
+	'foreignKey'				=> 'tl_content.id',
+	'relation'                	=> array('type'=>'hasOne', 'load'=>'lazy'),
+);
+
+$GLOBALS['TL_DCA']['tl_content']['fields']['draftState'] = array
+(
+	'sql' 						=> "varchar(255) NOT NULL default ''",
+);
