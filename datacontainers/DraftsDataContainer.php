@@ -555,7 +555,7 @@ abstract class DraftsDataContainer extends DataContainer
 
 			if($objDc->activeRecord->draftid !== null)
 			{
-				$objModel = new $strModelClass($objDc->activeRecord);
+				$objModel = new VersioningModel(new $strModelClass($objDc->activeRecord));
 				$objModel->id = $objDc->activeRecord->draftid;
 				$objModel->draftid = null;
 				$objModel->ptable = 'tl_drafts';
