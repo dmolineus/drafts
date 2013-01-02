@@ -527,6 +527,43 @@ abstract class DraftsDataContainer extends DataContainer
 	
 	
 	/**
+	 * make sure that draft version is updated when version is restored
+	 * 
+	 * @param int id
+	 * @param string table
+	 * @param array data
+	 * @param int current version
+	 */
+	public function onRestoreCallback($intId, $strTable, $arrData, $intVersion)
+	{
+		// set draft state to modified because we do not know what has changed
+		if($this->blnDraftMode)
+		{			
+			$arrSet = array('draftState' => array('modified'));
+			$this->Database->prepare('UPDATE ' . $strTable . ' %s WHERE id=?')->set($arrSet)->executeUncached($intId);
+		}
+		// create new version of draft
+		elseif($this->objDraft !== null)
+		{
+			$objResult = $this->Database->prepare('SELECT draftid FROM ' . $this->strTable . ' WHERE id=?')->execute($intId);
+			
+			if($objResult->numRows == 1 && $objResult->draftid > 0)
+			{
+				$strModelClass = $this->getModelClassFromTable($this->strTable);
+				
+				$objModel = new VersioningModel($strModelClass::findByPK($intId));
+				$objModel->id = $objResult->draftid;
+				$objModel->draftid = null;
+				$objModel->ptable = 'tl_drafts';
+				$objModel->pid = $this->objDraft->id;
+				$objModel->tstamp = time();
+				$objModel->save();				
+			}
+		}
+	}
+	
+	
+	/**
 	 * store modified draft
 	 */
 	public function onSubmitCallback($objDc)

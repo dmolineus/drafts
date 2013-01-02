@@ -21,8 +21,9 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 	$GLOBALS['TL_DCA']['tl_content']['config']['onload_callback'][] 			= array('Netzmacht\Drafts\DataContainer\Content', 'checkPermission');
 	$GLOBALS['TL_DCA']['tl_content']['config']['ondelete_callback'][] 			= array('Netzmacht\Drafts\DataContainer\Content', 'onDeleteCallback');
 	$GLOBALS['TL_DCA']['tl_content']['config']['oncreate_callback'][] 			= array('Netzmacht\Drafts\DataContainer\Content', 'onCreateCallback');
-	$GLOBALS['TL_DCA']['tl_content']['config']['onsubmit_callback'][] 			= array('Netzmacht\Drafts\DataContainer\Content', 'onSubmitCallback');
 	$GLOBALS['TL_DCA']['tl_content']['config']['oncut_callback'][] 				= array('Netzmacht\Drafts\DataContainer\Content', 'onCutCallback');
+	$GLOBALS['TL_DCA']['tl_content']['config']['onrestore_callback'][] 			= array('Netzmacht\Drafts\DataContainer\Content', 'onRestoreCallback');
+	$GLOBALS['TL_DCA']['tl_content']['config']['onsubmit_callback'][] 			= array('Netzmacht\Drafts\DataContainer\Content', 'onSubmitCallback');
 	
 	$GLOBALS['TL_DCA']['tl_content']['fields']['invisible']['save_callback'][] 	= array('Netzmacht\Drafts\DataContainer\Content', 'onToggleVisibility');
 	
