@@ -65,7 +65,7 @@ class VersioningModel extends Controller
 	public function __get($strKey)
 	{
 		$strFirst = substr($strKey, 0, 1);
-
+		
 		// first case is upper case so we asume an object here
 		if(ucfirst($strFirst) === $strFirst && isset($this->arrObjects[$strKey]))
 		{
@@ -80,8 +80,7 @@ class VersioningModel extends Controller
 	 */
 	public function __clone()
 	{
-		$objNew = clone $this->objModel;
-		return new VersioningModel($objNew);
+		$this->objModel = clone $this->objModel;
 	}
 	
 	
