@@ -95,10 +95,11 @@ abstract class DraftsDataContainer extends DataContainer
 		$strModelClass = $this->getModelClassFromTable($this->strTable);
 		
 		// try to find model
-		if($objModel === null || get_class($objModel) == 'Contao\DC_Table')
+		if($objModel === null || $objModel instanceof DC_Table)
 		{
-			$objModel = $strModelClass::findByPK($this->intId);
 			
+			$objModel = $strModelClass::findByPK($this->intId);
+
 			if($objModel === null)
 			{
 				$this->log('Invalid approach to apply draft. No draft found', get_class($this) . ' applyDraft', TL_ERROR);
@@ -122,18 +123,13 @@ abstract class DraftsDataContainer extends DataContainer
 		{
 			if($objOriginal !== null)
 			{
-				// reset delete command so by undo no delete request is saved				
-				$objOriginal->draftState = '';
-				$objOriginal->save();
-
 				// use dc_table for deleting so the undo item is also created
-				\Input::setGet('id', $objOriginal->id);
-				$dc = new \DC_Table($this->strTable);
+				$dc = new DC_Table($this->strTable);
 				$dc->delete(true);
 			}
 			
 			\Input::setGet('id', $objModel->delete());
-			$dc = new \DC_Table($this->strTable);
+			$dc = new DC_Table($this->strTable);
 			$dc->delete(true);
 		}
 		
@@ -167,7 +163,7 @@ abstract class DraftsDataContainer extends DataContainer
 		// apply changes 
 		if(in_array('modified', $arrState))
 		{
-			$objNew = new VersioningModel(clone $objModel);
+			$objNew = clone $objModel;
 			$objNew->id = $objOriginal->id;
 			$objNew->ptable = $objOriginal->ptable;
 			$objNew->pid = $objOriginal->pid;
@@ -1081,9 +1077,8 @@ abstract class DraftsDataContainer extends DataContainer
 
 		// find by child id
 		elseif(!in_array($this->strAction, array(null, 'select', 'create')) && !($this->strAction == 'paste' && Input::get('mode') == 'create'))
-		{
+		{		
 			$this->objDraft = DraftsModel::findOneByChildIdAndTable($this->intId, $this->strTable);
-			
 		}
 		else
 		{
