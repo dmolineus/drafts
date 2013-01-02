@@ -13,13 +13,13 @@
  **/
 
 namespace Netzmacht\Drafts\Module;
-use BackendModule, Input, DraftsModel;
+use Backend, Input, DraftsModel;
 
 
 /**
  * 
  */
-class DraftsModule extends BackendModule
+class DraftsModule extends Backend
 {
 	protected $objDraft;
 	
@@ -39,10 +39,11 @@ class DraftsModule extends BackendModule
 			$this->log('No Draft with id "' .Input::get('id'). '" found', 'DraftsModule createTask()', TL_ERROR);
 			$this->redirect('contao/main.php?act=error');
 		}
+		
+		$this->import('BackendUser', 'User');
 				
 		if($this->objDraft->taskid == '0' || $this->objDraft->taskid == '')
 		{
-			$this->import('BackendUser', 'User');
 			$this->loadLanguageFile('tl_drafts');
 			$objResult = $this->Database->query('SELECT * FROM ' . $this->objDraft->ptable . ' WHERE id=' . $this->objDraft->pid);
 			
@@ -66,16 +67,13 @@ class DraftsModule extends BackendModule
 			$this->objDraft->taskid = $objTask->insertId;
 			$this->objDraft->save();
 		}
+		// hotfix: switch the created id to the current user, otherwise it is not possible to edit it
+		// see: https://github.com/cliffparnitzky/TaskCenter/issues/13
+		else 
+		{
+			$this->Database->query('UPDATE tl_task SET createdBy=' . $this->User->id . ' WHERE id=' . $this->objDraft->taskid);		
+		}
 		
 		$this->redirect('contao/main.php?do=tasks&act=edit&id=' . $this->objDraft->taskid . '&rt=' . REQUEST_TOKEN);
 	}
-
-
-	/*
-	 * 
-	 */
-	protected function compile()
-	{
-		
-	} 
 }
