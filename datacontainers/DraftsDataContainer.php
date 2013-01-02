@@ -399,6 +399,7 @@ abstract class DraftsDataContainer extends DataContainer
 	 */
 	public function initialize()
 	{
+		$this->initializeDataContainer();
 		$this->initializeDraft();
 		$this->initializeModes();
 	}
@@ -412,7 +413,7 @@ abstract class DraftsDataContainer extends DataContainer
 	 * @param array 
 	 * @param DC_Table
 	 */
-	public function onCreateCallback($strTable, $intId, $arrSet, $objDc)
+	public function onCreate($strTable, $intId, $arrSet, $objDc)
 	{
 		if($this->blnDraftMode)
 		{
@@ -443,7 +444,7 @@ abstract class DraftsDataContainer extends DataContainer
 	 * @param DC_Table
 	 * @return void
 	 */
-	public function onCutCallback($objDc)
+	public function onCut($objDc)
 	{
 		if(!$this->blnDraftMode && $this->objDraft === null)
 		{
@@ -497,7 +498,7 @@ abstract class DraftsDataContainer extends DataContainer
 	 * @param DC_Table
 	 * @return void
 	 */
-	public function onDeleteCallback($objDc)
+	public function onDelete($objDc)
 	{
 		if($this->blnDraftMode)
 		{
@@ -534,7 +535,7 @@ abstract class DraftsDataContainer extends DataContainer
 	 * @param array data
 	 * @param int current version
 	 */
-	public function onRestoreCallback($intId, $strTable, $arrData, $intVersion)
+	public function onRestore($intId, $strTable, $arrData, $intVersion)
 	{
 		// set draft state to modified because we do not know what has changed
 		if($this->blnDraftMode)
@@ -566,7 +567,7 @@ abstract class DraftsDataContainer extends DataContainer
 	/**
 	 * store modified draft
 	 */
-	public function onSubmitCallback($objDc)
+	public function onSubmit($objDc)
 	{	
 		if(!$objDc->activeRecord->isModified)
 		{
@@ -839,7 +840,10 @@ abstract class DraftsDataContainer extends DataContainer
 	 * @return bool true
 	 */
 	protected function buttonRuleHasAccessOnPublished(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
-	{					
+	{
+		$arrAttributes['ptable'] = true;
+		$arrAttributes['alexf'] = 'published';
+		
 		// grant access if not published
 		if(!$this->isPublished($arrRow))
 		{
@@ -947,7 +951,71 @@ abstract class DraftsDataContainer extends DataContainer
 		
 		return false;
 	}
-	
+
+
+	/**
+	 * initialize the data container
+	 */
+	protected function initializeDataContainer()
+	{
+		$strClass = get_class($this);
+		
+		// register callbacks
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['ondelete_callback'][] 	= array($strClass, 'onDelete');
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncreate_callback'][] 	= array($strClass, 'onCreate');
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncut_callback'][] 		= array($strClass, 'onCut');
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['onrestore_callback'][] 	= array($strClass, 'onRestore');
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['onsubmit_callback'][] 	= array($strClass, 'onSubmit');
+		
+		if($this->blnDraftMode)
+		{
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['header_callback'] = array($strClass, 'generateParentHeader');
+			$GLOBALS['TL_DCA'][$this->strTable]['edit']['buttons_callback'][] = array($strClass, 'generateSubmitButtons');		
+		}
+		
+		// setup permission rules
+		if($this->blnDraftMode)
+		{
+			$arrRules = array('generic:key=[,reset,apply]', 'hasAccess:key=apply:alexf=published:ptable');
+		}
+		else
+		{
+			$arrRules = array('hasAccessOnPublished:act=[edit,delete,cut,select,deleteAll,editAll]:ptable:alexf=published');
+		}
+		
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = $arrRules;
+		
+		// register global operations
+		array_insert($GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations'], 0, array
+		(
+			'live' => array
+			(
+				'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['livemode'],
+				'href' 				=> 'draft=0',
+				'class'				=> 'header_live',
+				'button_callback' 	=> array($strClass, 'generateGlobalButtonLive'),
+				'button_rules' 		=> array('validate:get:var=draft:is=1', 'switchMode', 'generate'),
+			),
+			
+			'draft' => array
+			(
+				'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftmode'],
+				'href' 				=> 'draft=1',
+				'class'				=> 'header_draft',
+				'button_callback' 	=> array($strClass, 'generateGlobalButtonDraft'),
+				'button_rules' 		=> array('validate:get:var=draft:not=1', 'switchMode:draft', 'generate'),
+			),
+			
+			'task' => array
+			(
+				'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['task'],
+				'href' 				=> 'contao/main.php?do=' . Input::get('do') . '&key=task',
+				'class'				=> 'header_task',
+				'button_callback' 	=> array($strClass, 'generateGlobalButtonTask'),
+				'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate'),
+			)
+		));
+	}
 	
 	/**
 	 * create initial draft version
@@ -1059,7 +1127,7 @@ abstract class DraftsDataContainer extends DataContainer
 		$arrAttributes['alexf'] = 'published';
 		$blnHasAccess = $this->genericHasAccess($arrAttributes);
 		
-		if($this->strAction != 'task')
+		if($this->strAction != 'task' && $this->strAction != 'show')
 		{
 			$intState = !$this->isPublished() ? 2 : ($blnHasAccess ? 1 : 0);
 			\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][$intState] . '</p>');			
