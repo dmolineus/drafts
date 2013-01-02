@@ -97,7 +97,6 @@ abstract class DraftsDataContainer extends DataContainer
 		// try to find model
 		if($objModel === null || $objModel instanceof DC_Table)
 		{
-			
 			$objModel = $strModelClass::findByPK($this->intId);
 
 			if($objModel === null)
@@ -442,7 +441,7 @@ abstract class DraftsDataContainer extends DataContainer
 	 */
 	public function onCut($objDc)
 	{
-		if(!$this->blnDraftMode && $this->objDraft === null)
+		if(!$this->blnDraftMode || $this->objDraft === null)
 		{
 			return;
 		}
@@ -785,7 +784,6 @@ abstract class DraftsDataContainer extends DataContainer
 	 */
 	protected function buttonRuleTaskButton(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		$this->import('Config');
 		if($this->objDraft === null || !in_array('tasks', $this->Config->getActiveModules()))
 		{
 			return false;
@@ -1207,8 +1205,8 @@ abstract class DraftsDataContainer extends DataContainer
 	
 	
 	/**
-	 * this rule calls the original check permission method
-	 * 
+	 * this rule checks permission in draft mode
+	 *  
 	 * @param Dc_Table
 	 * @param array
 	 * @param string
@@ -1218,13 +1216,14 @@ abstract class DraftsDataContainer extends DataContainer
 	{
 		$strClass = $arrAttributes['class'];
 		
-		// only check in draft mode and if checkPermission exists
-		if(!$this->blnDraftMode || !method_exists($strClass, 'checkPermission'))
+		// only check in draft mode, if checkPermission exists and if no key attribute is given
+		if(!$this->blnDraftMode || !method_exists($strClass, 'checkPermission') || Input::get('key') != '')
 		{
 			return true;
 		}
 		
 		$intId = Input::get('id');
+		$intPid = Input::get('pid');
 		
 		// child element giiven
 		if(!in_array($this->strAction, array(null, 'select', 'create')))
@@ -1239,12 +1238,24 @@ abstract class DraftsDataContainer extends DataContainer
 				return false;
 			}
 			
-			// fake id
+			// fake ids
 			Input::setGet('id', $objModel->id);
+			
+			if($intPid !== null)
+			{
+				$objModel = $strModelClass::findOneBy('draftid', $intPid);
+				Input::setGet('pid', $objModel->id);
+			}
 			
 			$this->import($strClass);
 			$this->$strClass->checkPermission($objDc);			
 			Input::setGet('id', $intId);
+			
+			if($intPid !== null)
+			{
+				Input::setGet('pid', $intPid);				
+			}
+			
 			return true;
 		}
 		
