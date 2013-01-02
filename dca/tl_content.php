@@ -24,17 +24,16 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 	if(Input::get('draft') == '1')
 	{
 		// set ptable dynamically and store old ptable
-		$GLOBALS['TL_DCA']['tl_content']['config']['dtable'] = $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'];
+		$GLOBALS['TL_DCA']['tl_content']['config']['dtable'] = $GLOBALS['TL_DCA']['tl_content']['config']['ptable'];
 		$GLOBALS['TL_DCA']['tl_content']['config']['ptable'] = 'tl_drafts';
 		
 		// generate callback
 		$GLOBALS['TL_DCA']['tl_content']['list']['sorting']['child_record_callback'] = array('Netzmacht\Drafts\DataContainer\Content', 'generateChildRecord');
 		
-		// remove default permission callback for draft mode
-		$intIndex = array_search(array('tl_content', 'checkPermission'), $GLOBALS['TL_DCA']['tl_content']['config']['onload_callback']);
-	
-		if($intIndex >= 0)
-		{
+		// remove default permission callback for draft mode	
+		if($GLOBALS['TL_DCA']['tl_content']['config']['onload_callback'][0][1] == 'checkPermission')
+		{			
+			$GLOBALS['TL_DCA']['tl_content']['config']['permission_rules'] = array('checkPermission:class=' . $GLOBALS['TL_DCA']['tl_content']['config']['onload_callback'][0][0]);
 			unset($GLOBALS['TL_DCA']['tl_content']['config']['onload_callback'][0]);
 		}
 
