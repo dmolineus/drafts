@@ -13,7 +13,11 @@
  **/
  
 namespace Netzmacht\Drafts\DataContainer;
-use Netzmacht\Utils\DataContainer, Input, DraftsModel;
+use Netzmacht\Utils\DataContainer, 
+	Netzmacht\Drafts\Model\VersioningModel, 
+	Input, 
+	DraftsModel,
+	DC_Table;
 
 
 /**
@@ -107,6 +111,9 @@ abstract class DraftsDataContainer extends DataContainer
 			}
 		}
 		
+		// automatically create versioning
+		$objModel = new VersioningModel($objModel);
+		
 		$objOriginal = $strModelClass::findOneBy('draftid', $objModel->id);
 		$arrState = unserialize($objModel->draftState);
 
@@ -124,13 +131,16 @@ abstract class DraftsDataContainer extends DataContainer
 				$dc = new \DC_Table($this->strTable);
 				$dc->delete(true);
 			}
-			$objModel->delete();
+			
+			\Input::setGet('id', $objModel->delete());
+			$dc = new \DC_Table($this->strTable);
+			$dc->delete(true);
 		}
 		
 		// create new original
 		elseif(in_array('new', $arrState))
 		{
-			$objNew = clone $objModel;
+			$objNew = new VersioningModel(clone $objModel);
 			$objNew->pid = $this->objDraft->pid;
 			$objNew->ptable = $this->objDraft->ptable;
 			$objNew->draftState = '';
@@ -157,7 +167,7 @@ abstract class DraftsDataContainer extends DataContainer
 		// apply changes 
 		if(in_array('modified', $arrState))
 		{
-			$objNew = clone $objModel;
+			$objNew = new VersioningModel(clone $objModel);
 			$objNew->id = $objOriginal->id;
 			$objNew->ptable = $objOriginal->ptable;
 			$objNew->pid = $objOriginal->pid;
@@ -165,11 +175,6 @@ abstract class DraftsDataContainer extends DataContainer
 			$objNew->draftState= '';
 			$objNew->draftid = $objModel->id;
 			$objNew->save();
-			
-			if($GLOBALS['TL_DCA'][$this->strTable]['config']['enableVersioning'])
-			{
-				$this->createNewVersion($this->strTable, $objOriginal->id);
-			}
 		}
 		
 		// apply new sorting
@@ -188,6 +193,7 @@ abstract class DraftsDataContainer extends DataContainer
 		
 		if($blnSave)
 		{
+			$objOriginal = new VersioningModel($objOriginal);
 			$objOriginal->tstamp = time();
 			$objOriginal->save();
 		}
@@ -394,7 +400,7 @@ abstract class DraftsDataContainer extends DataContainer
 	public function initialize()
 	{
 		$this->initializeDraft();
-		$this->initializeLiveMode();
+		$this->initializeModes();
 	}
 	
 	
@@ -546,11 +552,6 @@ abstract class DraftsDataContainer extends DataContainer
 		elseif($this->objDraft !== null)
 		{
 			$strModelClass = $this->getModelClassFromTable($this->strTable);
-			
-			if($GLOBALS['TL_DCA'][$this->strTable]['config']['enableVersioning'])
-			{
-				$this->createNewVersion($this->strTable, $objDc->activeRecord->draftid);
-			}
 
 			if($objDc->activeRecord->draftid !== null)
 			{
@@ -609,6 +610,7 @@ abstract class DraftsDataContainer extends DataContainer
 			
 			if($objModel !== null && $blnVisible != $objModel->invisible)
 			{
+				$objModel = new VersioiningModel($objModel);
 				$arrState = unserialize($objModel->draftState);
 				
 				if(is_array($arrState) && in_array('visibility', $arrState))
@@ -620,7 +622,6 @@ abstract class DraftsDataContainer extends DataContainer
 				$objModel->invisible = $blnVisible;
 				$objModel->tstamp = time();
 				$objModel->save();
-
 			}
 		}
 		
@@ -654,6 +655,7 @@ abstract class DraftsDataContainer extends DataContainer
 			}
 		}
 		
+		$objModel = new VersioningModel($objModel);
 		$objOriginal = $strModelClass::findOneBy('draftid', $objModel->id);
 		$arrState = unserialize($objModel->draftState);
 		$blnSave = false;
@@ -661,7 +663,10 @@ abstract class DraftsDataContainer extends DataContainer
 		// no original exists, so delete draft
 		if($objOriginal === null)
 		{
-			$objModel->delete();
+			// let's use dc_table so undo record is created
+			Input::setGet('id', $objModel->id);
+			$dc = new DC_Table($this->strTable);
+			$dc->delete(true);
 			
 			if(!$blnDoNoRedirect)
 			{
@@ -673,7 +678,7 @@ abstract class DraftsDataContainer extends DataContainer
 		// modified draft, reset to original
 		elseif(in_array('modified', $arrState)) 
 		{
-			$objNew = clone $objOriginal;
+			$objNew = new VersioningModel(clone $objOriginal);
 			$objNew->id = $objModel->id;
 			$objNew->pid = $objModel->pid;
 			$objNew->ptable = $objModel->ptable;
@@ -712,7 +717,10 @@ abstract class DraftsDataContainer extends DataContainer
 		// delete new one
 		if(in_array('new', $arrState))
 		{
-			$objModel->delete();
+			// let's use dc_table so undo record is created
+			Input::setGet('id', $objModel->id);
+			$dc = new DC_Table($this->strTable);
+			$dc->delete(true);
 		}
 		elseif($blnSave) 
 		{
@@ -972,7 +980,7 @@ abstract class DraftsDataContainer extends DataContainer
 			$this->objDraft = DraftsModel::findOneByChildIdAndTable($this->intId, $this->strTable);
 			
 		}
-		else 
+		else
 		{
 			$this->objDraft = DraftsModel::findByPK($this->intId);
 		}
@@ -988,7 +996,7 @@ abstract class DraftsDataContainer extends DataContainer
 	/**
 	 * initial draft mode
 	 */
-	protected function initializeLiveMode()
+	protected function initializeModes()
 	{
 		// set session data for draft mode
 		if($this->blnDraftMode)

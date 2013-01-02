@@ -20,6 +20,7 @@ ClassLoader::addClasses(array
 	
 	// models
 	'DraftsModel' => 'system/modules/drafts/models/DraftsModel.php',
+	'Netzmacht\Drafts\Model\VersioningModel' => 'system/modules/drafts/models/VersioningModel.php',
 	
 	// modules
 	'Netzmacht\Drafts\Module\DraftsModule' => 'system/modules/drafts/modules/DraftsModule.php',
