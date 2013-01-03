@@ -69,6 +69,8 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 			),
 		));
 		
+		$GLOBALS['TL_JAVASCRIPT'][] = 'system/modules/drafts/assets/visibility.js';
+		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['toggle']['attributes']		= 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return toggleDraftLabel(this, \'visibility\', \'' . urlencode($GLOBALS['TL_LANG']['tl_content']['draftState_visibility']) . '\')"';
 		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['toggle']['button_callback'] = array('Netzmacht\Drafts\DataContainer\Content', 'generateButtonToggle');
 		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['toggle']['button_rules']	= array('toggleIcon:field=invisible:inverted', 'generate');
 	}
