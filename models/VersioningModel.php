@@ -24,7 +24,7 @@ class VersioningModel extends Controller
 	
 	/**
 	 * model reference
-	 * @var Contao\Model
+	 * @var \Model
 	 */
 	protected $objModel;
 	
@@ -32,7 +32,7 @@ class VersioningModel extends Controller
 	/**
 	 * set model
 	 * 
-	 * @param Contao\Model
+	 * @param \Model
 	 */
 	public function __construct($objModel)
 	{
@@ -105,6 +105,17 @@ class VersioningModel extends Controller
 	public function __set($strKey, $mixedValue)
 	{
 		$this->objModel->$strKey = $mixedValue;
+	}
+	
+	
+	/**
+	 * get model
+	 * 
+	 * @return \Model
+	 */
+	public function getModel()
+	{
+		return $this->objModel;
 	}
 	
 	

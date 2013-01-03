@@ -17,7 +17,8 @@ use Netzmacht\Utils\DataContainer,
 	Netzmacht\Drafts\Model\VersioningModel, 
 	Input, 
 	DraftsModel,
-	DC_Table;
+	DC_Table,
+	Contao\Database\Mysql\Result;
 
 
 /**
@@ -86,9 +87,18 @@ abstract class DraftsDataContainer extends DataContainer
 	
 	
 	/**
+	 * reset message to avoid wrong live mode message
+	 */
+	public function __destruct()
+	{
+		\Message::reset();	
+	}
+	
+	
+	/**
 	 * apply changes of draft to original
 	 * 
-	 * @param Contao\Model
+	 * @param \Model
 	 */
 	public function applyDraft($objModel = null, $blnDoNoRedirect=false)
 	{
@@ -111,10 +121,7 @@ abstract class DraftsDataContainer extends DataContainer
 			}
 		}
 		
-		// automatically create versioning
-		$objModel = new VersioningModel($objModel);
-		
-		$objOriginal = $strModelClass::findOneBy('draftid', $objModel->id);
+		$objOriginal = $strModelClass::findByPK($objModel->draftRelated);
 		$arrState = unserialize($objModel->draftState);
 
 		// delete original
@@ -135,16 +142,9 @@ abstract class DraftsDataContainer extends DataContainer
 		// create new original
 		elseif(in_array('new', $arrState))
 		{
-			$objNew = new VersioningModel(clone $objModel);
-			$objNew->pid = $this->objDraft->pid;
-			$objNew->ptable = $this->objDraft->ptable;
+			$objNew = $this->prepareModel($objModel);
 			$objNew->draftState = '';
-			$objNew->draftid = $objModel->id;
-			$objNew->tstamp = time();
-			$objNew->save(true);
-			
-			$objModel->draftState= '';
-			$objModel->save();
+			$objModel->save(true);
 		}
 		
 		// no original found so break
@@ -162,13 +162,8 @@ abstract class DraftsDataContainer extends DataContainer
 		// apply changes 
 		if(in_array('modified', $arrState))
 		{
-			$objNew = clone $objModel;
-			$objNew->id = $objOriginal->id;
-			$objNew->ptable = $objOriginal->ptable;
-			$objNew->pid = $objOriginal->pid;
-			$objNew->tstamp = time();
-			$objNew->draftState= '';
-			$objNew->draftid = $objModel->id;
+			$objNew = $this->prepareModel($objModel, false, $objOriginal, false);
+			$objNew->draftState= '';			
 			$objNew->save();
 		}
 		
@@ -418,16 +413,10 @@ abstract class DraftsDataContainer extends DataContainer
 		// create draft
 		elseif($this->objDraft !== null)
 		{
-			$strModelClass = $this->getModelClassFromTable($this->strTable);
-			
-			$objModel = new $strModelClass;
-			$objModel->setRow($arrSet);
-			$objModel->pid = $this->objDraft->id;
-			$objModel->ptable = 'tl_drafts';
-			$objModel->tstamp = time();
+			$objModel = $this->prepareModel($arrSet, true);
 			$objModel->save();
 			
-			$arrSet = array('draftid' => $objModel->id, 'tstamp' => time());
+			$arrSet = array('draftRelated' => $objModel->id, 'tstamp' => time());
 			$this->Database->prepare('UPDATE ' . $this->strTable . ' %s WHERE id=?')->set($arrSet)->execute($intId);
 		}
 	}
@@ -441,13 +430,13 @@ abstract class DraftsDataContainer extends DataContainer
 	 */
 	public function onCut($objDc)
 	{
-		if(!$this->blnDraftMode || $this->objDraft === null)
+		if($this->objDraft === null)
 		{
 			return;
 		}
 		
 		$strQuery 	= 'SELECT j.id, j.draftState, t.sorting FROM ' . $this->strTable . ' t'
-					. ' LEFT JOIN ' . $this->strTable . ' j ON j.id = t.draftid'
+					. ' LEFT JOIN ' . $this->strTable . ' j ON j.id = t.draftRelated'
 					. ' WHERE t.pid=? AND t.ptable=? AND j.id>0 AND t.sorting != j.sorting';
 							
 		$objResult = $this->Database->prepare($strQuery)->execute($this->objDraft->pid, $this->objDraft->ptable);
@@ -459,6 +448,7 @@ abstract class DraftsDataContainer extends DataContainer
 		
 		while($objResult->next()) 
 		{
+			$arrSet = array();
 			$arrState = unserialize($objResult->draftState);
 			
 			if($this->blnDraftMode && (!is_array($arrState) || !in_array('sorted', $arrState)))
@@ -479,7 +469,7 @@ abstract class DraftsDataContainer extends DataContainer
 				continue;
 			}
 			
-			$arrSet = array('tstamp' => time());
+			$arrSet['tstamp'] = time();
 			$arrSet['draftState'] = $arrState;
 			
 			$this->Database->prepare('UPDATE ' . $this->strTable . ' %s WHERE id=?')->set($arrSet)->execute($objResult->id);
@@ -515,9 +505,9 @@ abstract class DraftsDataContainer extends DataContainer
 			$this->redirect($this->getReferer());	
 		}
 		// also delete draft
-		elseif($objDc->activeRecord->draftid !== null)
+		elseif($objDc->activeRecord->draftRelated != null)
 		{
-			$this->Database->query('DELETE FROM ' . $this->strTable . ' WHERE id=' . $objDc->activeRecord->draftid);			
+			$this->Database->query('DELETE FROM ' . $this->strTable . ' WHERE id=' . $objDc->activeRecord->draftRelated);			
 		}
 	}
 	
@@ -541,18 +531,11 @@ abstract class DraftsDataContainer extends DataContainer
 		// create new version of draft
 		elseif($this->objDraft !== null)
 		{
-			$objResult = $this->Database->prepare('SELECT draftid FROM ' . $this->strTable . ' WHERE id=?')->execute($intId);
+			$objResult = $this->Database->prepare('SELECT draftRelated FROM ' . $this->strTable . ' WHERE id=?')->execute($intId);
 			
-			if($objResult->numRows == 1 && $objResult->draftid > 0)
-			{
-				$strModelClass = $this->getModelClassFromTable($this->strTable);
-				
-				$objModel = new VersioningModel($strModelClass::findByPK($intId));
-				$objModel->id = $objResult->draftid;
-				$objModel->draftid = null;
-				$objModel->ptable = 'tl_drafts';
-				$objModel->pid = $this->objDraft->id;
-				$objModel->tstamp = time();
+			if($objResult->numRows == 1 && $objResult->draftRelated > 0)
+			{				
+				$objModel = $this->prepareModel($strModelClass::findByPK($intId), true, $objResult);
 				$objModel->save();				
 			}
 		}
@@ -586,14 +569,9 @@ abstract class DraftsDataContainer extends DataContainer
 		{
 			$strModelClass = $this->getModelClassFromTable($this->strTable);
 
-			if($objDc->activeRecord->draftid !== null)
+			if($objDc->activeRecord->draftRelated != null)
 			{
-				$objModel = new VersioningModel(new $strModelClass($objDc->activeRecord));
-				$objModel->id = $objDc->activeRecord->draftid;
-				$objModel->draftid = null;
-				$objModel->ptable = 'tl_drafts';
-				$objModel->pid = $this->objDraft->id;
-				$objModel->tstamp = time();
+				$objModel = $this->prepareModel($objDc->activeRecord, true, $objDc->activeRecord);
 				$objModel->save();
 			}	
 		}
@@ -632,13 +610,13 @@ abstract class DraftsDataContainer extends DataContainer
 		{			
 			if(get_class($objDc) == get_class($this))
 			{
-				$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE id=(SELECT draftid FROM ' . $this->strTable . ' WHERE id =?)';
+				$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftRelated id =?';
 				$objResult = $this->Database->prepare($strQuery)->execute($this->intId);
 				$objModel = new $strModelClass($objResult);
 			}
 			else
 			{
-				$objModel = $strModelClass::findByPK($objDc->activeRecord->draftid);
+				$objModel = $strModelClass::findByPK($objDc->activeRecord->draftRelated);
 			}
 			
 			if($objModel !== null && $blnVisible != $objModel->invisible)
@@ -665,7 +643,7 @@ abstract class DraftsDataContainer extends DataContainer
 	/**
 	 * reset single draft
 	 * 
-	 * @param Contao\Model|null
+	 * @param Model|null
 	 */
 	public function resetDraft($objModel = null, $blnDoNoRedirect=false)
 	{
@@ -689,7 +667,7 @@ abstract class DraftsDataContainer extends DataContainer
 		}
 		
 		$objModel = new VersioningModel($objModel);
-		$objOriginal = $strModelClass::findOneBy('draftid', $objModel->id);
+		$objOriginal = $strModelClass::findOneBy('draftRelated', $objModel->id);
 		$arrState = unserialize($objModel->draftState);
 		$blnSave = false;
 		
@@ -711,13 +689,8 @@ abstract class DraftsDataContainer extends DataContainer
 		// modified draft, reset to original
 		elseif(in_array('modified', $arrState)) 
 		{
-			$objNew = new VersioningModel(clone $objOriginal);
-			$objNew->id = $objModel->id;
-			$objNew->pid = $objModel->pid;
-			$objNew->ptable = $objModel->ptable;
+			$objNew = $this->prepareModel($objOriginal, true, $objModel);
 			$objNew->draftState = '';
-			$objNew->draftid = null;
-			$objNew->tstamp = time();
 			$objNew->save();
 				
 			if(!$blnDoNoRedirect)
@@ -1063,14 +1036,10 @@ abstract class DraftsDataContainer extends DataContainer
 				{
 					$objModel = new $strModelClass($objResult);
 					
-					$objNew = clone $objModel;
-					$objNew->ptable = 'tl_drafts';
-					$objNew->pid = $this->objDraft->id;
-					$objNew->draftid = null;
-					$objNew->tstamp = time();
+					$objNew = $this->prepareModel($objModel, true, $objModel);
 					$objNew->save(true);
 					
-					$objModel->draftid = $objNew->id;
+					$objModel->draftRelated = $objNew->id;
 					$objModel->tstamp = time();
 					$objModel->save();
 				}
@@ -1127,7 +1096,7 @@ abstract class DraftsDataContainer extends DataContainer
 		$arrAttributes['alexf'] = 'published';
 		$blnHasAccess = $this->genericHasAccess($arrAttributes);
 		
-		if($this->strAction != 'task' && $this->strAction != 'show')
+		if($this->strAction != 'task' && $this->strAction != 'show' && Input::post('isAjaxRequest') == '')
 		{
 			$intState = !$this->isPublished() ? 2 : ($blnHasAccess ? 1 : 0);
 			\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][$intState] . '</p>');			
@@ -1245,8 +1214,8 @@ abstract class DraftsDataContainer extends DataContainer
 		
 		$strClass = $arrAttributes['class'];
 		
-		// only check in draft mode, if checkPermission exists and if no key attribute is given
-		if(!method_exists($strClass, 'checkPermission') || Input::get('key') != '')
+		// only check draft mode, if no key attribute is given
+		if(Input::get('key') != '')
 		{
 			return true;
 		}
@@ -1269,9 +1238,9 @@ abstract class DraftsDataContainer extends DataContainer
 		// check permission for child element
 		$strModelClass = $this->getModelClassFromTable($this->strTable);
 		
-		$objModel = $strModelClass::findOneBy('draftid', $this->intId);
+		$objModel = $strModelClass::findOneBy('draftRelated', $this->intId);
 		
-		if($objModel === null)
+		if($objModel === null && !($this->strAction == 'paste' && Input::get('mode') == 'create') & !($this->strAction == 'create' && Input::get('mode') == '1'))
 		{
 			$strError = 'Original element of draft version was not found';
 			return false;
@@ -1283,7 +1252,7 @@ abstract class DraftsDataContainer extends DataContainer
 		
 		if($intPid !== null)
 		{
-			$objModel = $strModelClass::findOneBy('draftid', $intPid);
+			$objModel = $strModelClass::findOneBy('draftRelated', $intPid);
 			Input::setGet('pid', $objModel->id);
 		}
 		
@@ -1297,6 +1266,74 @@ abstract class DraftsDataContainer extends DataContainer
 		}
 		
 		return true;
+	}
+
+
+	/**
+	 * creates a new model by cloning a reference and replace
+	 * 
+	 * @param \Model|array model or result array
+	 * @param bool true if new model is a draft
+	 * @param \Model|null
+	 * @param bool switch id and draftRelated
+	 * @param bool true if forcing a new model 
+	 * @param bool true is versioning shall be used
+	 */
+	protected function prepareModel($objCopy, $blnDraft=false, $objReference=null, $blnSwitchIds=true, $blnNew=false, $blnVersioning=true)
+	{
+		$strClass = $this->getModelClassFromTable($this->strTable);
+		
+		if(is_array($objCopy))
+		{
+			$objNew = new $strClass();
+			$objNew->setRow($objCopy);
+		}
+		elseif($objCopy instanceof Result)
+		{
+			$objNew = new $strClass($objCopy);
+		}
+		else
+		{
+			$objNew = clone $objCopy;			
+		}
+		
+		// versioning
+		if($blnVersioning)
+		{
+			$objNew = new VersioningModel($objNew);
+		}
+		elseif($objNew instanceof VersioningModel)
+		{
+			$objNew = $objNew->getModel();			
+		}
+		
+		// id and draft related
+		if($objReference !== null)
+		{
+			if(!$blnNew)
+			{
+				$strId = $blnSwitchIds ? 'draftRelated' : 'id';
+				$objNew->id = $objReference->{$strId};				
+			}
+			
+			$strId = $blnSwitchIds ? 'id' : 'draftRelated';
+			$objNew->draftRelated = $objReference->{$strId};
+		}
+		
+		// pid and ptable
+		if($blnDraft)
+		{
+			$objNew->pid = $this->objDraft->id;
+			$objNew->ptable = 'tl_drafts';			
+		}
+		elseif($objReference !== null) 
+		{
+			$objNew->pid = $objReference->pid;
+			$objNew->ptable = $objReference->ptable;
+		}
+		
+		$objNew->tstamp = time();
+		return $objNew;
 	}
 
 }

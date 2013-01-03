@@ -97,12 +97,15 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 	}
 }
 
+$GLOBALS['TL_DCA']['tl_content']['config']['sql']['keys']['draftRelated'] = 'unique';
+
 // fields
-$GLOBALS['TL_DCA']['tl_content']['fields']['draftid'] = array
+$GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated'] = array
 (
-	'sql' 						=> 'int(10) unsigned NULL',
+	'sql' 						=> "int(10) unsigned NULL",
 	'foreignKey'				=> 'tl_content.id',
 	'relation'                	=> array('type'=>'hasOne', 'load'=>'lazy'),
+	'eval'						=> array('unique' => true),
 );
 
 $GLOBALS['TL_DCA']['tl_content']['fields']['draftState'] = array
