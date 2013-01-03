@@ -11,10 +11,12 @@
  * @copyright 2012 David Molineus netzmacht creative 
  */
 
-require '/../../config/localconfig.php';
+require TL_ROOT . '/system/config/localconfig.php';
 
 $GLOBALS['TL_CONFIG']['draftModulesOptions'] = array('article', 'news', 'calendar');
 $GLOBALS['TL_CONFIG']['draftModules'] = unserialize($GLOBALS['TL_CONFIG']['draftModules']);
+
+$GLOBALS['TL_JAVASCRIPT'][] = 'system/modules/drafts/assets/script.js';
 
 // enable draft mode for articles
 if(in_array('article', $GLOBALS['TL_CONFIG']['draftModules']))

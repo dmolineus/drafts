@@ -69,7 +69,6 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 			),
 		));
 		
-		$GLOBALS['TL_JAVASCRIPT'][] = 'system/modules/drafts/assets/visibility.js';
 		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['toggle']['attributes']		= 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return toggleDraftLabel(this, \'visibility\', \'' . urlencode($GLOBALS['TL_LANG']['tl_content']['draftState_visibility']) . '\')"';
 		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['toggle']['button_callback'] = array('Netzmacht\Drafts\DataContainer\Content', 'generateButtonToggle');
 		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['toggle']['button_rules']	= array('toggleIcon:field=invisible:inverted', 'generate');
@@ -83,7 +82,7 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 		
 		// global operations
 		$GLOBALS['TL_DCA']['tl_content']['list']['global_operations']['all']['button_callback'] = array('Netzmacht\Drafts\DataContainer\Content', 'generateGlobalButtonAll');
-		$GLOBALS['TL_DCA']['tl_content']['list']['global_operations']['all']['button_rules']	= array('hasAccessOnPublished', 'generate');
+		$GLOBALS['TL_DCA']['tl_content']['list']['global_operations']['all']['button_rules']	= array('hasAccessOnPublished', 'generate:table:id');
 	
 		// operation callbacks
 		$GLOBALS['TL_DCA']['tl_content']['list']['operations']['edit']['button_callback']	= array('Netzmacht\Drafts\DataContainer\Content', 'generateButtonEdit');
@@ -113,4 +112,9 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated'] = array
 $GLOBALS['TL_DCA']['tl_content']['fields']['draftState'] = array
 (
 	'sql' 						=> "varchar(255) NOT NULL default ''",
+);
+
+$GLOBALS['TL_DCA']['tl_content']['fields']['draftDelete'] = array
+(
+	'sql' 						=> "char(1) NOT NULL default ''",
 );

@@ -1,4 +1,4 @@
-<FilesMatch "(diff).php$">
+<FilesMatch "(diff|task).php$">
      Order Deny,Allow 
      Allow from All 
 </FilesMatch>

@@ -66,6 +66,13 @@ abstract class DraftsDataContainer extends DataContainer
 	
 	
 	/**
+	 * current action
+	 * @param string
+	 */
+	protected $strModel;
+	
+	
+	/**
 	 * constructor sets draft mode
 	 * 
 	 * @return void
@@ -75,6 +82,7 @@ abstract class DraftsDataContainer extends DataContainer
 		parent::__construct();
 
 		$this->blnDraftMode = Input::get('draft') == '1';
+		$this->strModel = $this->getModelClassFromTable($this->strTable);
 		$this->strAction = (Input::get('act') == null ? Input::get('key') : Input::get('act'));
 		
 		if(Input::get('tid') != null)
@@ -824,9 +832,14 @@ abstract class DraftsDataContainer extends DataContainer
 			return false;
 		}
 		
-		$strHref .= '&id=' . $this->objDraft->id;
+		$arrAttributes['plain'] = true;
+		$arrAttributes['__set__'][] = 'plain';
+		
+		$strHref = 'system/modules/drafts/task.php?id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN;
 		$strLabel = $GLOBALS['TL_LANG'][$this->strTable]['task_edit'][0];
-		$strTitel = $GLOBALS['TL_LANG'][$this->strTable]['task_edit'][1];
+		$strTitle = $GLOBALS['TL_LANG'][$this->strTable]['task_edit'][1];
+		
+		$strAttributes = 'onclick="Backend.openModalIframe({\'width\':770,\'title\':\'' . $strTitle . '\',\'url\':this.href});addSubmitButton();return false"';
 		return true;
 	}
 

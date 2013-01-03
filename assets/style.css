@@ -68,3 +68,8 @@
 {
 	background-image: url('../../tasks/html/icon.gif');
 }
+
+.popup.task
+{
+	padding: 6px 0 0 !important;
+}

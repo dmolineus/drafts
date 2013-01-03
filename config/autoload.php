@@ -30,4 +30,5 @@ ClassLoader::addClasses(array
 TemplateLoader::addFiles(array 
 (
 	'be_drafts_diff'	=> 'system/modules/drafts/templates/',
+	'be_drafts_task'	=> 'system/modules/drafts/templates/',
 ));
