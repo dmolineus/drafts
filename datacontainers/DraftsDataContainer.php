@@ -73,7 +73,7 @@ abstract class DraftsDataContainer extends DataContainer
 	public function __construct()
 	{
 		parent::__construct();
-		
+
 		$this->blnDraftMode = Input::get('draft') == '1';
 		$this->strAction = (Input::get('act') == null ? Input::get('key') : Input::get('act'));
 		
@@ -104,6 +104,11 @@ abstract class DraftsDataContainer extends DataContainer
 	{
 		$strModelClass = $this->getModelClassFromTable($this->strTable);
 		
+		if($objModel instanceof DC_Table)
+		{
+			$this->initialize();
+		}
+		
 		// try to find model
 		if($objModel === null || $objModel instanceof DC_Table)
 		{
@@ -124,27 +129,32 @@ abstract class DraftsDataContainer extends DataContainer
 		$objOriginal = $strModelClass::findByPK($objModel->draftRelated);
 		$arrState = unserialize($objModel->draftState);
 
-		// delete original
+		// delete original will also delete draft
 		if(in_array('delete', $arrState))
 		{
-			if($objOriginal !== null)
-			{
-				// use dc_table for deleting so the undo item is also created
-				$dc = new DC_Table($this->strTable);
-				$dc->delete(true);
-			}
-			
-			\Input::setGet('id', $objModel->delete());
-			$dc = new DC_Table($this->strTable);
-			$dc->delete(true);
+			$this->redirect('contao/main.php?do=' . Input::get('do') . '&table=' . $this->strTable . '&act=delete&id=' . $objModel->draftRelated . '&rt=' . REQUEST_TOKEN);
+			return;
 		}
 		
 		// create new original
 		elseif(in_array('new', $arrState))
 		{
-			$objNew = $this->prepareModel($objModel);
+			$objNew = $this->prepareModel($objModel, false, $objModel, true, true);
+			$objNew->pid = $this->objDraft->pid;
+			$objNew->ptable = $this->objDraft->ptable;
 			$objNew->draftState = '';
-			$objModel->save(true);
+			$objNew->save(true);
+			
+			$objModel->draftState = '';
+			$objModel->draftRelated = $objNew->id;
+			$objModel->tstamp = time();
+			$objModel->save();
+			
+			if(!$blnDoNoRedirect)
+			{
+				$this->redirect($this->getReferer());					
+			}
+			return;
 		}
 		
 		// no original found so break
@@ -396,6 +406,32 @@ abstract class DraftsDataContainer extends DataContainer
 	
 	
 	/**
+	 * keep draft in sync by copying elements
+	 * 
+	 * @param int id
+	 * @param DC_Table
+	 */
+	public function onCopy($insertID, $objDc)
+	{
+		// label copied element as new
+		if($this->blnDraftMode)
+		{
+			$arrState = array('new');
+			$arrSet = array('tstamp' => time(), 'draftState' => $arrState, 'draftRelated' => null);
+			$this->Database->prepare('UPDATE ' . $this->strTable . ' %s WHERE id=?')->set($arrSet)->execute($insertID);
+		}
+		elseif($this->objDraft !== null)
+		{
+			$strModelClass = $this->getModelClassFromTable($this->strTable);
+			$objModel = $strModelClass::findByPK($insertID);
+			
+			$objNew = $this->prepareModel($objModel, true, $objModel, true, true);
+			$objNew->save();
+		}
+	}
+	
+	
+	/**
 	 * keep draft in sync with 
 	 * 
 	 * @param string table
@@ -489,14 +525,19 @@ abstract class DraftsDataContainer extends DataContainer
 		{
 			$arrState = unserialize($objDc->activeRecord->draftState);
 		
-			if(in_array('delete', $arrState))
+			// delete new elements
+			if(in_array('new', $arrState))
+			{
+				return;
+			}
+			elseif(in_array('delete', $arrState))
 			{
 				unset($arrState[array_search('delete', $arrState)]);			
 			}
 			else
 			{
 				$arrState[] = 'delete';			
-			}
+			}			
 			
 			$arrSet = array('draftState' => $arrState);		
 			$this->Database->prepare('UPDATE ' . $this->strTable . ' %s WHERE id=?')->set($arrSet)->execute($objDc->id);
@@ -608,10 +649,11 @@ abstract class DraftsDataContainer extends DataContainer
 			$objModel->save();
 		}
 		elseif($this->objDraft !== null)
-		{			
+		{
+			
 			if(get_class($objDc) == get_class($this))
 			{
-				$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftRelated id =?';
+				$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftRelated=?';
 				$objResult = $this->Database->prepare($strQuery)->execute($this->intId);
 				$objModel = new $strModelClass($objResult);
 			}
@@ -622,7 +664,7 @@ abstract class DraftsDataContainer extends DataContainer
 			
 			if($objModel !== null && $blnVisible != $objModel->invisible)
 			{
-				$objModel = new VersioiningModel($objModel);
+				$objModel = new VersioningModel($objModel);
 				$arrState = unserialize($objModel->draftState);
 				
 				if(is_array($arrState) && in_array('visibility', $arrState))
@@ -931,6 +973,7 @@ abstract class DraftsDataContainer extends DataContainer
 		// register callbacks
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['ondelete_callback'][] 	= array($strClass, 'onDelete');
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncreate_callback'][] 	= array($strClass, 'onCreate');
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncopy_callback'][] 		= array($strClass, 'onCopy');
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncut_callback'][] 		= array($strClass, 'onCut');
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['onrestore_callback'][] 	= array($strClass, 'onRestore');
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['onsubmit_callback'][] 	= array($strClass, 'onSubmit');
@@ -1243,10 +1286,21 @@ abstract class DraftsDataContainer extends DataContainer
 		
 		$objModel = $strModelClass::findOneBy('draftRelated', $this->intId);
 		
-		if($objModel === null && !($this->strAction == 'paste' && Input::get('mode') == 'create') & !($this->strAction == 'create' && Input::get('mode') == '1'))
+		if($objModel === null)
 		{
-			$strError = 'Original element of draft version was not found';
-			return false;
+			$objDraft = $strModelClass::findByPK($this->intId);
+			$arrState = unserialize($objDraft->draftState);
+			
+			if(in_array('new', $arrState))
+			{
+				return true;
+			}
+			
+			if($this->strAction != 'paste' && !($this->strAction == 'create' && Input::get('mode') != '') && $this->strAction != 'copy')
+			{
+				$strError = 'Original element of draft version was not found';
+				return false;				
+			}
 		}
 		
 		// fake ids to run original check permission method
@@ -1317,6 +1371,10 @@ abstract class DraftsDataContainer extends DataContainer
 			{
 				$strId = $blnSwitchIds ? 'draftRelated' : 'id';
 				$objNew->id = $objReference->{$strId};				
+			}
+			else
+			{
+				$objNew->id = null;
 			}
 			
 			$strId = $blnSwitchIds ? 'id' : 'draftRelated';
