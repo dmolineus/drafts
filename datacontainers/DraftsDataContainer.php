@@ -974,7 +974,7 @@ abstract class DraftsDataContainer extends DataContainer
 		}
 		else
 		{
-			$arrRules = array('hasAccessOnPublished:act=[edit,delete,cut,select,deleteAll,editAll]:ptable:alexf=published');
+			$arrRules = array('hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]:ptable:alexf=published');
 		}
 		
 		if(is_array($GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules']))
@@ -1205,143 +1205,95 @@ abstract class DraftsDataContainer extends DataContainer
 	
 	
 	/**
-	 * this rule checks permission in draft mode
+	 * check permission for draft mode
 	 *  
 	 * @param Dc_Table
 	 * @param array
 	 * @param string
 	 * @return bool
 	 */
-	protected function permissionRuleCheckPermission($objDc, &$arrAttributes, &$strError)
-	{
+	protected function permissionRuleDraftPermission($objDc, &$arrAttributes, &$strError)
+	{			
+		// store access to root in session 
+		if(!$this->blnDraftMode)
+		{
+			if(!in_array($this->strAction, array(null, 'select', 'create')))
+			{
+				return true;				
+			}
+			
+			$arrPerm = $this->Session->get('draftPermission');
+			
+			if($arrPerm === null || !is_array($arrPerm))
+			{
+				$arrPerm = array();
+			}
+			
+			// store access in session so draft mode can access it
+			$arrPerm[$this->intId] = true;
+			$this->Session->set('draftPermission', $arrPerm);
+			
+			if(Input::get('redirect') == '1' && $this->objDraft !== null)
+			{
+				\Message::reset();
+				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&draft=1&redirect=2&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->id, REQUEST_TOKEN));
+				return false;								
+			}
+			
+			return true;
+		}
+		
 		$strClass = $arrAttributes['class'];
 		
 		// only check in draft mode, if checkPermission exists and if no key attribute is given
-		if(!$this->blnDraftMode || !method_exists($strClass, 'checkPermission') || Input::get('key') != '')
+		if(!method_exists($strClass, 'checkPermission') || Input::get('key') != '')
 		{
 			return true;
 		}
 		
-		$intId = Input::get('id');
+		// check access to root
+		if(in_array($this->strAction, array(null, 'select', 'create')))
+		{
+			$arrPerm = $this->Session->get('draftPermission');
+			
+			// redirect to live view to check permission, use redirect param to avoid recursively redirects
+			if(!isset($arrPerm[$this->intId]) && Input::get('redirect') != '2')
+			{
+				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=1&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->pid, REQUEST_TOKEN));				
+				return false;
+			}
+			
+			return true;
+		}
+
+		// check permission for child element
+		$strModelClass = $this->getModelClassFromTable($this->strTable);
+		
+		$objModel = $strModelClass::findOneBy('draftid', $this->intId);
+		
+		if($objModel === null)
+		{
+			$strError = 'Original element of draft version was not found';
+			return false;
+		}
+		
+		// fake ids to run original check permission method
+		Input::setGet('id', $objModel->id);
 		$intPid = Input::get('pid');
 		
-		// child element giiven
-		if(!in_array($this->strAction, array(null, 'select', 'create')))
+		if($intPid !== null)
 		{
-			$strModelClass = $strModelClass = $this->getModelClassFromTable($this->strTable);
-			
-			$objModel = $strModelClass::findOneBy('draftid', $intId);
-			
-			if($objModel === null)
-			{
-				$strError = 'Original element of draft version was not found';
-				return false;
-			}
-			
-			// fake ids
-			Input::setGet('id', $objModel->id);
-			
-			if($intPid !== null)
-			{
-				$objModel = $strModelClass::findOneBy('draftid', $intPid);
-				Input::setGet('pid', $objModel->id);
-			}
-			
-			$this->import($strClass);
-			$this->$strClass->checkPermission($objDc);			
-			Input::setGet('id', $intId);
-			
-			if($intPid !== null)
-			{
-				Input::setGet('pid', $intPid);				
-			}
-			
-			return true;
+			$objModel = $strModelClass::findOneBy('draftid', $intPid);
+			Input::setGet('pid', $objModel->id);
 		}
 		
-		elseif($this->objDraft === null)
-		{
-			$strError = 'Draft with ID "' . $intId . '" does not exist.';
-			return false;
-		}
+		$this->import($strClass);
+		$this->$strClass->checkPermission($objDc);			
+		Input::setGet('id', $this->intId);
 		
-		// we have to reimplement check permission for root calls because we cannot change CURRENT_ID which is used for it
-		if(Input::get('do') == 'news')
+		if($intPid !== null)
 		{
-			$strQuery = 'SELECT a.id, n.id AS cid FROM tl_news n, tl_news_archive a WHERE n.id=? AND n.pid=a.id';
-			$arrRoot = (!is_array($this->User->news) || empty($this->User->news)) ? array(0) : $this->User->news;
-		}
-		elseif(Input::get('do') == 'calendar') 
-		{
-			$strQuery = 'SELECT a.id, n.id AS cid FROM tl_calendar_events n, tl_calendar a WHERE n.id=? AND n.pid=a.id';
-			$arrRoot = (!is_array($this->User->calendars) || empty($this->User->calendars)) ? array(0) : $this->User->calendars;
-		}
-		elseif(Input::get('do') == 'article')
-		{
-			$strQuery = 'SELECT p.id, p.pid, p.includeChmod, p.chmod, p.cuser, p.cgroup, a.id AS cid FROM tl_article a, tl_page p WHERE a.id=? AND a.pid=p.id';
-			
-			// Get the pagemounts
-			$arrRoot = array();
-	
-			foreach ($this->User->pagemounts as $root)
-			{
-				$arrRoot[] = $root;
-				$arrRoot = array_merge($arrRoot, $this->Database->getChildRecords($root, 'tl_page'));
-			}
-	
-			$arrRoot = array_unique($arrRoot);
-		}
-		else
-		{
-			if(!isset($GLOBALS['TL_DCA'][$this->strTable]['config']['draftsRootCheckPermission']) || empty($GLOBALS['TL_DCA'][$this->strTable]['config']['draftsRootCheckPermission']))
-			{
-				$strError = 'Module "' . Input::get('do') . '" is not known to DraftsDataContainer';
-				return false;
-			}
-			
-			$strQuery = null;
-			$arrRoot = array();
-			$blnForceAccess = false;
-			
-			// callback for custom permission checking
-			foreach ($GLOBALS['TL_DCA'][$this->strTable]['config']['draftsRootCheckPermission'] as $arrCallback) 
-			{
-				$this->import($arrCallback[0]);
-				$this->{$arrCallback[0]}->{$arrCallback[1]}($strQuery, $arrRoot, $blnForceAccess);
-				
-				if($blnForceAccess)
-				{
-					return true;
-				}				
-			}
-
-			if($strQuery === null)
-			{
-				$strError = 'Module "' . Input::get('do') . '" is not known to DraftsDataContainer';
-				return false;
-			}
-		}
-		
-		$intId = $this->objDraft->pid;
-		$objResult = $this->Database->prepare($strQuery)->limit(1)->execute($intId);
-		
-		if($objResult->numRows < 1)
-		{
-			$strError = 'Invalid draft element ID' . $intId;
-			return false;
-		}
-		
-		// parent is not mounted
-		if (!in_array($objResult->id, $arrRoot))
-		{
-			$strError = 'Not enough permissions to modify element ID ' . $objResult->cid . ' in ' . Input::get('do') . ' ID ' . $objResult->id;
-			return false;
-		}
-		
-		if(Input::get('do') == 'article' && !$this->User->isAllowed(4, $objResult->row()))
-		{
-			$strError = 'Not enough permissions to modify article ID ' . $objResult->cid;
-			return false;
+			Input::setGet('pid', $intPid);				
 		}
 		
 		return true;

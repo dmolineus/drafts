@@ -33,7 +33,7 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 		// remove default permission callback for draft mode	
 		if($GLOBALS['TL_DCA']['tl_content']['config']['onload_callback'][0][1] == 'checkPermission')
 		{			
-			$GLOBALS['TL_DCA']['tl_content']['config']['permission_rules'] = array('checkPermission:class=' . $GLOBALS['TL_DCA']['tl_content']['config']['onload_callback'][0][0]);
+			$GLOBALS['TL_DCA']['tl_content']['config']['permission_rules'] = array('draftPermission:class=' . $GLOBALS['TL_DCA']['tl_content']['config']['onload_callback'][0][0]);
 			unset($GLOBALS['TL_DCA']['tl_content']['config']['onload_callback'][0]);
 		}
 
@@ -76,6 +76,9 @@ if(in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 	// check permission for operations in live mode
 	else
 	{
+		// permission rules
+		$GLOBALS['TL_DCA']['tl_content']['config']['permission_rules'] = array('draftPermission');
+		
 		// global operations
 		$GLOBALS['TL_DCA']['tl_content']['list']['global_operations']['all']['button_callback'] = array('Netzmacht\Drafts\DataContainer\Content', 'generateGlobalButtonAll');
 		$GLOBALS['TL_DCA']['tl_content']['list']['global_operations']['all']['button_rules']	= array('hasAccessOnPublished', 'generate');
