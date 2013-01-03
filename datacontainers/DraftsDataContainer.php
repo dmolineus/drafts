@@ -531,7 +531,8 @@ abstract class DraftsDataContainer extends DataContainer
 		// create new version of draft
 		elseif($this->objDraft !== null)
 		{
-			$objResult = $this->Database->prepare('SELECT draftRelated FROM ' . $this->strTable . ' WHERE id=?')->execute($intId);
+			$strModelClass = $this->getModelClassFromTable($this->strTable);
+			$objResult = $this->Database->prepare('SELECT id, draftRelated FROM ' . $this->strTable . ' WHERE id=?')->execute($intId);
 			
 			if($objResult->numRows == 1 && $objResult->draftRelated > 0)
 			{				
@@ -689,7 +690,7 @@ abstract class DraftsDataContainer extends DataContainer
 		// modified draft, reset to original
 		elseif(in_array('modified', $arrState)) 
 		{
-			$objNew = $this->prepareModel($objOriginal, true, $objModel, false);
+			$objNew = $this->prepareModel($objOriginal, true, $objModel);
 			$objNew->draftState = '';
 			$objNew->save();
 				
