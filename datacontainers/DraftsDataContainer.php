@@ -689,7 +689,7 @@ abstract class DraftsDataContainer extends DataContainer
 		// modified draft, reset to original
 		elseif(in_array('modified', $arrState)) 
 		{
-			$objNew = $this->prepareModel($objOriginal, true, $objModel);
+			$objNew = $this->prepareModel($objOriginal, true, $objModel, false);
 			$objNew->draftState = '';
 			$objNew->save();
 				
@@ -960,35 +960,32 @@ abstract class DraftsDataContainer extends DataContainer
 		}
 		
 		// register global operations
-		array_insert($GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations'], 0, array
+		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['live'] = array
 		(
-			'live' => array
-			(
-				'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['livemode'],
-				'href' 				=> 'draft=0',
-				'class'				=> 'header_live',
-				'button_callback' 	=> array($strClass, 'generateGlobalButtonLive'),
-				'button_rules' 		=> array('validate:get:var=draft:is=1', 'switchMode', 'generate'),
-			),
+			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['livemode'],
+			'href' 				=> 'draft=0',
+			'class'				=> 'header_live',
+			'button_callback' 	=> array($strClass, 'generateGlobalButtonLive'),
+			'button_rules' 		=> array('validate:get:var=draft:is=1', 'switchMode', 'generate'),
+		);
 			
-			'draft' => array
-			(
-				'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftmode'],
-				'href' 				=> 'draft=1',
-				'class'				=> 'header_draft',
-				'button_callback' 	=> array($strClass, 'generateGlobalButtonDraft'),
-				'button_rules' 		=> array('validate:get:var=draft:not=1', 'switchMode:draft', 'generate'),
-			),
+		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['draft'] = array
+		(
+			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftmode'],
+			'href' 				=> 'draft=1',
+			'class'				=> 'header_draft',
+			'button_callback' 	=> array($strClass, 'generateGlobalButtonDraft'),
+			'button_rules' 		=> array('validate:get:var=draft:not=1', 'switchMode:draft', 'generate'),
+		);
 			
-			'task' => array
-			(
-				'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['task'],
-				'href' 				=> 'contao/main.php?do=' . Input::get('do') . '&key=task',
-				'class'				=> 'header_task',
-				'button_callback' 	=> array($strClass, 'generateGlobalButtonTask'),
-				'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate'),
-			)
-		));
+		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['task'] = array
+		(
+			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['task'],
+			'href' 				=> 'contao/main.php?do=' . Input::get('do') . '&key=task',
+			'class'				=> 'header_task',
+			'button_callback' 	=> array($strClass, 'generateGlobalButtonTask'),
+			'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate'),
+		);
 	}
 	
 	/**
@@ -1198,8 +1195,8 @@ abstract class DraftsDataContainer extends DataContainer
 				$arrPerm = array();
 			}
 			
-			// store access in session so draft mode can access it
-			$arrPerm[$this->intId] = true;
+			// store permissioin in session so draft mode can access it
+			$arrPerm[$this->objDraft->id] = true;
 			$this->Session->set('draftPermission', $arrPerm);
 			
 			if(Input::get('redirect') == '1' && $this->objDraft !== null)
@@ -1226,8 +1223,13 @@ abstract class DraftsDataContainer extends DataContainer
 			$arrPerm = $this->Session->get('draftPermission');
 			
 			// redirect to live view to check permission, use redirect param to avoid recursively redirects
-			if(!isset($arrPerm[$this->intId]) && Input::get('redirect') != '2')
+			if(!isset($arrPerm[$this->intId]))
 			{
+				if(Input::get('redirect') == '2')
+				{
+					return false;					
+				}
+				
 				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=1&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->pid, REQUEST_TOKEN));				
 				return false;
 			}
