@@ -132,7 +132,15 @@ abstract class DraftsDataContainer extends DataContainer
 		// delete original will also delete draft
 		if(in_array('delete', $arrState))
 		{
-			$this->redirect('contao/main.php?do=' . Input::get('do') . '&table=' . $this->strTable . '&act=delete&id=' . $objModel->draftRelated . '&rt=' . REQUEST_TOKEN);
+			// remove pid, reviseTable will do the dirty job
+			if($blnDoNoRedirect)
+			{
+				$this->Database->query('UPDATE ' . $this->strTable . ' SET pid="" WHERE id=' . $objModel->draftRelated . ' OR id=' . $objModel->id);
+			}
+			else
+			{
+				$this->redirect('contao/main.php?do=' . Input::get('do') . '&table=' . $this->strTable . '&act=delete&id=' . $objModel->draftRelated . '&rt=' . REQUEST_TOKEN);				
+			}
 			return;
 		}
 		
@@ -427,6 +435,9 @@ abstract class DraftsDataContainer extends DataContainer
 			
 			$objNew = $this->prepareModel($objModel, true, $objModel, true, true);
 			$objNew->save();
+			
+			$objModel->draftRelated = $objNew->id;
+			$objModel->save();
 		}
 	}
 	
@@ -523,6 +534,13 @@ abstract class DraftsDataContainer extends DataContainer
 	{
 		if($this->blnDraftMode)
 		{
+			// delete all mode, do nothing here. applyDraft is handling the delete task
+			if(Input::post('IDS') != '')
+			{
+				die($this->strAction);
+				return;								
+			}
+			
 			$arrState = unserialize($objDc->activeRecord->draftState);
 		
 			// delete new elements
@@ -542,13 +560,14 @@ abstract class DraftsDataContainer extends DataContainer
 			$arrSet = array('draftState' => $arrState);		
 			$this->Database->prepare('UPDATE ' . $this->strTable . ' %s WHERE id=?')->set($arrSet)->execute($objDc->id);
 			
-			// redirect so element is not deleted
-			$this->redirect($this->getReferer());	
+			// redirect so element is not deleted, not nessesary on applyDraft
+			$this->redirect($this->getReferer());
 		}
-		// also delete draft
+		
+		// remove pid, reviseTable will do the rest
 		elseif($objDc->activeRecord->draftRelated != null)
 		{
-			$this->Database->query('DELETE FROM ' . $this->strTable . ' WHERE id=' . $objDc->activeRecord->draftRelated);			
+			$this->Database->query('UPDATE ' . $this->strTable . ' SET pid="" WHERE id=' . $objDc->activeRecord->draftRelated);			
 		}
 	}
 	
