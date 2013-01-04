@@ -321,7 +321,6 @@ abstract class DraftableDataContainer extends DataContainer
 			}
 			
 			$this->redirect($this->getReferer());
-			return;
 		}
 		
 		// Reset Drafts
@@ -345,7 +344,6 @@ abstract class DraftableDataContainer extends DataContainer
 			}
 			
 			$this->redirect($this->getReferer());
-			return;	
 		}
 		
 		// not possible to use delete all at the moment
@@ -559,7 +557,12 @@ abstract class DraftableDataContainer extends DataContainer
 				);
 				
 				$this->Database->prepare('UPDATE tl_undo %s WHERE id=?')->set($arrSet)->execute($objUndo->id);
-				$objSave->delete();				
+				
+				if($objSave !== null)
+				{
+					$objSave->delete();
+				}
+								
 			}
 		}
 	}
@@ -658,7 +661,14 @@ abstract class DraftableDataContainer extends DataContainer
 			$objModel->tstamp = time();
 			$objModel->save();
 		}
-		elseif($this->objDraft !== null)
+		
+		// ajax request
+		if($this->objDraft === null && get_class($objDc) == get_class($this))
+		{
+			$this->objDraft = $objDc;
+		}
+		
+		if($this->objDraft !== null)
 		{
 			
 			if(get_class($objDc) == get_class($this))
@@ -789,8 +799,6 @@ abstract class DraftableDataContainer extends DataContainer
 		{
 			$this->redirect($this->getReferer());					
 		}
-		
-		return;
 	}
 
 
@@ -1051,7 +1059,7 @@ abstract class DraftableDataContainer extends DataContainer
 	{
 		// try to find draft in live mode
 		if(!$this->blnDraftMode)
-		{			
+		{
 			if(in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create'))
 			{
 				$this->objDraft = DraftsModel::findOneByPidAndTable($this->intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);				
@@ -1066,7 +1074,6 @@ abstract class DraftableDataContainer extends DataContainer
 					$this->objDraft = new DraftsModel($objResult);
 				}
 			}
-			return;			
 		}
 		
 		// create draft
@@ -1096,7 +1103,6 @@ abstract class DraftableDataContainer extends DataContainer
 			}
 			
 			$this->redirect('contao/main.php?do=' . Input::get('do') . '&table=' . $this->strTable . '&draft=1&id=' . $this->objDraft->id .'&rt=' . REQUEST_TOKEN);
-			return;
 		}
 
 		// find by child id
@@ -1107,7 +1113,7 @@ abstract class DraftableDataContainer extends DataContainer
 		else
 		{
 			$this->objDraft = DraftsModel::findByPK($this->intId);
-		}
+		}		
 
 		if($this->objDraft === null)
 		{
@@ -1261,13 +1267,11 @@ abstract class DraftableDataContainer extends DataContainer
 			
 			if(Input::get('redirect') == '1' && $this->objDraft !== null)
 			{
-				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&draft=1&redirect=2&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->id, REQUEST_TOKEN));
-				return false;		
+				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&draft=1&redirect=2&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->id, REQUEST_TOKEN));	
 			}
 			elseif (Input::get('redirect') == 'task') 
 			{
-				$this->redirect(sprintf('contao/main.php?do=tasks&act=edit&id=%s&redirect=2&rt=%s', Input::get('taskid'), REQUEST_TOKEN));
-				return false;				
+				$this->redirect(sprintf('contao/main.php?do=tasks&act=edit&id=%s&redirect=2&rt=%s', Input::get('taskid'), REQUEST_TOKEN));			
 			}
 			
 			return true;
@@ -1295,7 +1299,6 @@ abstract class DraftableDataContainer extends DataContainer
 				}
 				
 				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=1&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->pid, REQUEST_TOKEN));				
-				return false;
 			}
 			
 			return true;
@@ -1316,8 +1319,10 @@ abstract class DraftableDataContainer extends DataContainer
 			
 			if($this->strAction != 'paste' && !($this->strAction == 'create' && Input::get('mode') != '') && $this->strAction != 'copy')
 			{
-				$strError = 'Original element of draft version was not found';
-				return false;				
+				$arrState[] = 'new';
+				$objDraft->draftState = $arrState;
+				$objDraft->tstamp = time();
+				$objDraft->save();		
 			}
 		}
 		
