@@ -335,7 +335,7 @@ abstract class DraftableDataContainer extends DataContainer
 			while($objResult->next())
 			{
 				$objModel = new $this->strModel($objResult);
-				$this->resetDraft($objModel, true);
+				$this->resetDraft($objDc, $objModel, true);
 			}
 			
 			$this->redirect($this->getReferer());
@@ -678,19 +678,14 @@ abstract class DraftableDataContainer extends DataContainer
 	 * 
 	 * @param Model|null
 	 */
-	public function resetDraft($objModel = null, $blnDoNoRedirect=false)
+	public function resetDraft($objDc, $objModel = null, $blnDoNoRedirect=false)
 	{
 		$strModel = $this->strModel;
 		
 		// try to find model
-		if($objModel === null || $objModel instanceof DC_Table)
+		if($objModel === null)
 		{
-			if($objModel instanceof DC_Table)
-			{
-				$this->initialize();
-				$objDc = $objModel;
-			}
-
+			$this->initialize();
 			$objModel = $strModel::findByPK($this->intId);
 			
 			if($objModel === null)
@@ -719,7 +714,8 @@ abstract class DraftableDataContainer extends DataContainer
 		// delete new one
 		elseif($this->hasState($objModel, 'new'))
 		{
-			if($objDc !== null)
+			// use existing driver
+			if($this->intId == $objModel->id)
 			{
 				$objDc->delete(true);
 			}
@@ -793,8 +789,7 @@ abstract class DraftableDataContainer extends DataContainer
 		$arrAttributes['plain'] = true;
 		$arrAttributes['__set__'][] = 'plain';
 
-		$strHref = 'system/modules/drafts/task.php?id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN;		
-		$strAttributes = 'onclick="Backend.openModalIframe({\'width\':770,\'title\':\'' . $strTitle . '\',\'url\':this.href});addSubmitButton(\'' . $GLOBALS['TL_LANG'][$this->strTable]['task'][2] . '\');return false"';
+		$strHref = 'system/modules/drafts/task.php?id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN;
 		return true;
 	}
 
@@ -1025,16 +1020,24 @@ abstract class DraftableDataContainer extends DataContainer
 			'button_callback' 	=> array($strClass, 'generateGlobalButtonDraft'),
 			'button_rules' 		=> array('validate:get:var=draft:not=1', 'switchMode:draft', 'generate'),
 		);
+		
+		$strAttributes = sprintf('onclick="Backend.openModalIframe({\'width\':770,\'title\':\'%s\',\'url\':this.href});'
+								.'addSubmitButton(\'%s\');return false"', 
+								$GLOBALS['TL_LANG'][$this->strTable]['task'][0],
+								$GLOBALS['TL_LANG'][$this->strTable]['task'][2]
+		);
 			
 		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['task'] = array
 		(
 			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['task'],
 			'href' 				=> 'contao/main.php?do=' . Input::get('do') . '&key=task',
 			'class'				=> 'header_task',
+			'attributes'		=> $strAttributes,
 			'button_callback' 	=> array($strClass, 'generateGlobalButtonTask'),
 			'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate'),
 		);
 	}
+	
 	
 	/**
 	 * create initial draft version
