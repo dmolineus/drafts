@@ -37,6 +37,6 @@ $GLOBALS['TL_DRAFTS']['tl_article']['module'] 			= 'article';
 $GLOBALS['TL_DRAFTS']['tl_article']['ctable'] 			= 'tl_content';
 $GLOBALS['TL_DRAFTS']['tl_article']['title']			= 'title';
 
-$GLOBALS['TL_DRAFTS']['tl_news']['module'] 				= 'calendar';
+$GLOBALS['TL_DRAFTS']['tl_news']['module'] 				= 'news';
 $GLOBALS['TL_DRAFTS']['tl_news']['ctable'] 				= 'tl_content';
 $GLOBALS['TL_DRAFTS']['tl_news']['title']				= 'headline';
