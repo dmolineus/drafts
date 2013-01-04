@@ -49,7 +49,7 @@ class ModuleTasks extends Contao\ModuleTasks
 	 */
 	protected function checkPermission($objTask, $blnRedirect=false, $strErrorAction='access')
 	{
-		if($objTask->draftsid > 0)
+		if($GLOBALS['TL_CONFIG']['draftsUseTaskModule'] && $objTask->draftsid > 0)
 		{
 			$objDraft = DraftsModel::findByPK($objTask->draftsid);
 			
