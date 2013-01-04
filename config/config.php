@@ -40,3 +40,12 @@ $GLOBALS['TL_DRAFTS']['tl_article']['title']			= 'title';
 $GLOBALS['TL_DRAFTS']['tl_news']['module'] 				= 'news';
 $GLOBALS['TL_DRAFTS']['tl_news']['ctable'] 				= 'tl_content';
 $GLOBALS['TL_DRAFTS']['tl_news']['title']				= 'headline';
+
+// font awesome
+$GLOBALS['ICON_REPLACER']['buttons']['styleIcons'][] = array('edit', 'header_draft');
+$GLOBALS['ICON_REPLACER']['buttons']['styleIcons'][] = array('check', 'header_live');
+$GLOBALS['ICON_REPLACER']['buttons']['styleIcons'][] = array('tasks', 'header_task');
+
+$GLOBALS['ICON_REPLACER']['context']['imageIcons'][] = array('check', 'publish.png');
+$GLOBALS['ICON_REPLACER']['context']['imageIcons'][] = array('remove-sign', 'reset.png');
+$GLOBALS['ICON_REPLACER']['context']['imageIcons'][] = array('list-alt', 'diff.gif');
