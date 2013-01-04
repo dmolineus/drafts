@@ -804,12 +804,9 @@ abstract class DraftableDataContainer extends DataContainer
 		
 		$arrAttributes['plain'] = true;
 		$arrAttributes['__set__'][] = 'plain';
-		
-		$strHref = 'system/modules/drafts/task.php?id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN;
-		$strLabel = $GLOBALS['TL_LANG'][$this->strTable]['task_edit'][0];
-		$strTitle = $GLOBALS['TL_LANG'][$this->strTable]['task_edit'][1];
-		
-		$strAttributes = 'onclick="Backend.openModalIframe({\'width\':770,\'title\':\'' . $strTitle . '\',\'url\':this.href});addSubmitButton();return false"';
+
+		$strHref = 'system/modules/drafts/task.php?id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN;		
+		$strAttributes = 'onclick="Backend.openModalIframe({\'width\':770,\'title\':\'' . $strTitle . '\',\'url\':this.href});addSubmitButton(\'' . $GLOBALS['TL_LANG'][$this->strTable]['task'][2] . '\');return false"';
 		return true;
 	}
 

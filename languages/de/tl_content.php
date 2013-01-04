@@ -22,10 +22,9 @@ $GLOBALS['TL_LANG']['tl_content']['draftmode'][0] 		= 'Entwurfsmodus';
 $GLOBALS['TL_LANG']['tl_content']['draftmode'][1] 		= 'Zum Entwurfsmodus wechseln';
 $GLOBALS['TL_LANG']['tl_content']['livemode'][0] 		= 'Livemodus';
 $GLOBALS['TL_LANG']['tl_content']['livemode'][1] 		= 'Zum Livemodus wechseln';
-$GLOBALS['TL_LANG']['tl_content']['task'][0] 			= 'Aufgabe erstellen';
-$GLOBALS['TL_LANG']['tl_content']['task'][1] 			= 'Änderungen oder Freigabe beauftragen';
-$GLOBALS['TL_LANG']['tl_content']['task_edit'][0] 		= 'Aufgabe bearbeiten';
-$GLOBALS['TL_LANG']['tl_content']['task_edit'][1] 		= 'Aufgabe bearbeiten';
+$GLOBALS['TL_LANG']['tl_content']['task'][0] 			= 'Aufgabe bearbeiten';
+$GLOBALS['TL_LANG']['tl_content']['task'][1] 			= 'Freigabe oder Änderung beauftragen';
+$GLOBALS['TL_LANG']['tl_content']['task'][2]			= 'Aufgabe speichern';
 
 $GLOBALS['TL_LANG']['tl_content']['draftApply'][0]		= 'Entwurf anwenden';
 $GLOBALS['TL_LANG']['tl_content']['draftApply'][1]		= 'Änderungen des Entwurf umsetzen';

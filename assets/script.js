@@ -23,7 +23,7 @@ function getUrlVars() {
     return vars;
 }
 
-function addSubmitButton()
+function addSubmitButton(text)
 {
 	modal = $('simple-modal');
 	
@@ -31,7 +31,7 @@ function addSubmitButton()
 	modal.getElement('.simple-modal-footer .btn').addClass('cancel');
 	
 	button = new Element('a');
-	button.set('text', 'Aktualisieren');
+	button.set('text', text);
 	button.set('class', 'btn primary');
 	
 	button.addEvent('click', function() {
