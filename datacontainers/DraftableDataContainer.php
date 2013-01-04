@@ -440,8 +440,6 @@ abstract class DraftableDataContainer extends DataContainer
 	 */
 	public function onCut($objDc)
 	{
-		var_dump('$expression');
-		//die();
 		if($this->objDraft === null)
 		{
 			return;
@@ -449,7 +447,7 @@ abstract class DraftableDataContainer extends DataContainer
 
 		$strQuery 	= 'SELECT t.id, t.draftState, t.sorting FROM ' . $this->strTable . ' t'
 					. ' LEFT JOIN ' . $this->strTable . ' j ON j.id = t.draftRelated'
-					. ' WHERE t.pid=? AND t.ptable=? AND (t.sorting != j.sorting OR t.draftRelated IS null)';
+					. ' WHERE t.pid=? AND t.ptable=? AND t.sorting != j.sorting';
 							
 		$objResult = $this->Database->prepare($strQuery)->execute($this->objDraft->id, 'tl_drafts');
 
@@ -502,8 +500,7 @@ abstract class DraftableDataContainer extends DataContainer
 			// delete all mode, do nothing here. applyDraft is handling the delete task
 			if(Input::post('IDS') != '')
 			{
-				die($this->strAction);
-				return;								
+				return;
 			}
 			
 			$arrState = unserialize($objDc->activeRecord->draftState);
@@ -706,8 +703,13 @@ abstract class DraftableDataContainer extends DataContainer
 		$strModel = $this->strModel;
 		
 		// try to find model
-		if($objModel === null || get_class($objModel) == 'Contao\DC_Table')
+		if($objModel === null || $objModel instanceof DC_Table)
 		{
+			if($objModel instanceof DC_Table)
+			{
+				$objDc = $objModel;
+			}
+
 			$objModel = $strModel::findByPK($this->intId);
 			
 			if($objModel === null)
@@ -738,10 +740,19 @@ abstract class DraftableDataContainer extends DataContainer
 		// delete new one
 		elseif(in_array('new', $arrState))
 		{
-			// let's use dc_table so undo record is created
-			Input::setGet('id', $objModel->id);
-			$dc = new DC_Table($this->strTable);
-			$dc->delete(true);
+			if($objDc !== null)
+			{
+				$objDc->delete(true);
+			}
+			else
+			{
+				// let's use dc_table so undo record is created
+				Input::setGet('id', $objModel->id);
+				Input::setGet('act', 'delete');
+				$dc = new DC_Table($this->strTable);
+				$dc->delete(true);	
+				Input::setGet('id', $this->intId);			
+			}
 		}
 		
 		else
@@ -1100,6 +1111,7 @@ abstract class DraftableDataContainer extends DataContainer
 
 		if($this->objDraft === null)
 		{
+			$this->log($this->strAction . ' ' . $this->intId, 'sdaf', TL_ERROR);
 			$this->log('No Draft Model found', $this->strTable . ' initializeDraft()', TL_ERROR);
 			$this->redirect('contao/main.php?act=error');
 		}
