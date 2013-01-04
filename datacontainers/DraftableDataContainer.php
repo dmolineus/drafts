@@ -115,12 +115,7 @@ abstract class DraftableDataContainer extends DataContainer
 
 			if($objModel === null)
 			{
-				$this->log('Invalid approach to apply draft. No draft found', get_class($this) . ' applyDraft', TL_ERROR);
-				
-				if(!$blnDoNoRedirect)
-				{
-					$this->redirect('contao/main.php?act=error');
-				}
+				$this->triggerError('Invalid approach to apply draft. No draft found', 'applyDraft', $blnDoNoRedirect);				
 				return;
 			}
 		}
@@ -690,12 +685,7 @@ abstract class DraftableDataContainer extends DataContainer
 			
 			if($objModel === null)
 			{
-				$this->log('Invalid approach to reset draft. No draft found', get_class($this) . ' applyDraft', TL_ERROR);
-				
-				if(!$blnDoNoRedirect)
-				{
-					$this->redirect('contao/main.php?act=error');
-				}
+				$this->triggerError('Invalid approach to reset draft. No draft found', 'resetDraft', $blnDoNoRedirect);
 				return;
 			}
 		}
@@ -1106,8 +1096,7 @@ abstract class DraftableDataContainer extends DataContainer
 
 		if($this->objDraft === null)
 		{
-			$this->log('No Draft Model found', $this->strTable . ' initializeDraft()', TL_ERROR);
-			$this->redirect('contao/main.php?act=error');
+			$this->triggerError('No Draft Model found', initializeDraft);
 		}
 	}
 	
@@ -1475,9 +1464,27 @@ abstract class DraftableDataContainer extends DataContainer
 		
 		if($strAct !== null)
 		{
-			$strMode = ($strAct == 'apply' || $strAct == 'reset') ? 'key' : 'act'; 
+			$strMode = ($strAct == 'apply' || $strAct == 'reset') ? 'key' : 'act';
 			Input::setGet($strMode, $strAct);
 		}
 	}
 	
+	
+	/**
+	 * triggers an error saves the log message and redirect
+	 * 
+	 * @param string error message
+	 * @param string method
+	 * @param bool set true if no redirect
+	 * @param int error type
+	 */
+	protected function triggerError($strError, $strMethod, $blnDoNoRedirect=false, $intTye=TL_ERROR)
+	{
+		$this->log($strError, get_class($this) . ' ' . $strMethod . '()', $intTye);
+				
+		if(!$blnDoNoRedirect)
+		{
+			$this->redirect('contao/main.php?act=error');
+		}
+	}
 }
