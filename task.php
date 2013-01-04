@@ -40,11 +40,15 @@ class TaskController extends Backend
 	 */
 	public function __construct()
 	{
+		$this->import('Database');
 		$this->import('BackendUser', 'User');
 		parent::__construct();
 
 		$this->User->authenticate();
+		
 		$this->loadLanguageFile('default');
+		$this->loadLanguageFile('tl_drafts');
+		$this->loadLanguageFile('modules');
 	}
 
 
@@ -54,7 +58,6 @@ class TaskController extends Backend
 	public function run()
 	{
 		// clean task references
-		$this->import('Database');
 		$this->Database->query('UPDATE tl_drafts d SET taskid="" WHERE taskid>0 AND NOT EXISTS (SELECT id FROM tl_task WHERE id = d.taskid)');
 		
 		$objDraft = DraftsModel::findByPK(Input::get('id'));
@@ -65,8 +68,6 @@ class TaskController extends Backend
 			$this->redirect('contao/main.php?act=error');
 		}
 		
-		$this->import('BackendUser', 'User');
-		
 		if($objDraft->taskid > 0)
 		{
 			$objTask = $this->Database->query('SELECT id FROM tl_task WHERE id=' . $objDraft->taskid);			
@@ -75,8 +76,7 @@ class TaskController extends Backend
 				
 		if($objDraft->taskid == '0' || $objDraft->taskid == '' || $blnCreate)
 		{
-			$this->loadLanguageFile('tl_drafts');
-			$this->loadLanguageFile('modules');
+			
 			$objResult = $this->Database->query('SELECT * FROM ' . $objDraft->ptable . ' WHERE id=' . $objDraft->pid);
 			
 			$strField = $GLOBALS['TL_DRAFTS'][$objDraft->ptable]['title'];
@@ -112,7 +112,6 @@ class TaskController extends Backend
 		
 		$this->Template = new BackendTemplate('be_drafts_task');
 		$this->getBackendModule('tasks');
-		// Template variables
 		$this->Template->theme = $this->getTheme();
 		$this->Template->base = Environment::get('base');
 		$this->Template->language = $GLOBALS['TL_LANGUAGE'];
@@ -122,6 +121,7 @@ class TaskController extends Backend
 		$GLOBALS['TL_CONFIG']['debugMode'] = false;
 		$this->Template->output();
 	}
+
 }
 
 
