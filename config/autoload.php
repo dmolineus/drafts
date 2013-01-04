@@ -15,7 +15,7 @@
 ClassLoader::addClasses(array
 (
 	// datacontainers
-	'Netzmacht\Drafts\DataContainer\DraftsDataContainer' 	=> 'system/modules/drafts/datacontainers/DraftsDataContainer.php',
+	'Netzmacht\Drafts\DataContainer\DraftableDataContainer' 	=> 'system/modules/drafts/datacontainers/DraftableDataContainer.php',
 	'Netzmacht\Drafts\DataContainer\Content' 				=> 'system/modules/drafts/datacontainers/Content.php',
 	'Netzmacht\Drafts\DataContainer\Drafts' 				=> 'system/modules/drafts/datacontainers/Drafts.php',
 	

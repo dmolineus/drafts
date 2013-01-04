@@ -19,7 +19,7 @@ use Netzmacht\Utils\DataContainer;
 /**
  * Use DraftsDataContainer for tl_content 
  */
-class Content extends DraftsDataContainer
+class Content extends DraftableDataContainer
 {
 	
 	/**

@@ -25,7 +25,7 @@ use Netzmacht\Utils\DataContainer,
  * DraftsDataContainer provides methods for creating a drafts of a table
  * 
  */
-abstract class DraftsDataContainer extends DataContainer
+abstract class DraftableDataContainer extends DataContainer
 {
 	
 	/**
@@ -53,17 +53,10 @@ abstract class DraftsDataContainer extends DataContainer
 	protected $objDraft;
 	
 	/**
-	 * singleton instance
-	 * @param DraftsDataContainer
-	 */
-	protected static $objInstance = null;
-	
-	/**
 	 * current action
 	 * @param string
 	 */
 	protected $strAction;
-	
 	
 	/**
 	 * current action
@@ -110,8 +103,6 @@ abstract class DraftsDataContainer extends DataContainer
 	 */
 	public function applyDraft($objModel = null, $blnDoNoRedirect=false)
 	{
-		$strModelClass = $this->getModelClassFromTable($this->strTable);
-		
 		if($objModel instanceof DC_Table)
 		{
 			$this->initialize();
@@ -120,7 +111,8 @@ abstract class DraftsDataContainer extends DataContainer
 		// try to find model
 		if($objModel === null || $objModel instanceof DC_Table)
 		{
-			$objModel = $strModelClass::findByPK($this->intId);
+			$strModel = $this->strModel;
+			$objModel = $strModel::findByPK($this->intId);
 
 			if($objModel === null)
 			{
@@ -134,22 +126,17 @@ abstract class DraftsDataContainer extends DataContainer
 			}
 		}
 		
-		$objOriginal = $strModelClass::findByPK($objModel->draftRelated);
+		$strModel = $this->strModel;
+		$objOriginal = $strModel::findByPK($objModel->draftRelated);
 		$arrState = unserialize($objModel->draftState);
 
 		// delete original will also delete draft
 		if(in_array('delete', $arrState))
 		{
-			// remove pid, reviseTable will do the dirty job
-			if($blnDoNoRedirect)
-			{
-				$this->Database->query('UPDATE ' . $this->strTable . ' SET pid="" WHERE id=' . $objModel->draftRelated . ' OR id=' . $objModel->id);
-			}
-			else
-			{
-				$this->redirect('contao/main.php?do=' . Input::get('do') . '&table=' . $this->strTable . '&act=delete&id=' . $objModel->draftRelated . '&rt=' . REQUEST_TOKEN);				
-			}
-			return;
+			$this->switchMode($objModel->draftRelated);
+			$dc = new DC_Table($this->strTable);
+			$dc->delete(true);
+			$this->switchMode($this->intId);
 		}
 		
 		// create new original
@@ -165,57 +152,45 @@ abstract class DraftsDataContainer extends DataContainer
 			$objModel->draftRelated = $objNew->id;
 			$objModel->tstamp = time();
 			$objModel->save();
+		}
+		
+		elseif($objOriginal !== null)
+		{
+			$blnSave = false;
+		
+			// apply changes 
+			if(in_array('modified', $arrState))
+			{
+				$objNew = $this->prepareModel($objModel, false, $objOriginal, false);
+				$objNew->draftState= '';			
+				$objNew->save();
+			}
 			
-			if(!$blnDoNoRedirect)
+			// apply new sorting
+			if(in_array('sorted', $arrState))
 			{
-				$this->redirect($this->getReferer());					
+				$objOriginal->sorting = $objModel->sorting;		
+				$blnSave = true;
 			}
-			return;
-		}
-		
-		// no original found so break
-		elseif($objOriginal === null)
-		{
-			if(!$blnDoNoRedirect)
+			
+			// apply new visibility
+			if(in_array('visibility', $arrState))
 			{
-				$this->redirect($this->getReferer());					
+				$objOriginal->invisible = $objModel->invisible;
+				$blnSave = true;
 			}
-			return;
+			
+			if($blnSave)
+			{
+				$objOriginal = new VersioningModel($objOriginal);
+				$objOriginal->tstamp = time();
+				$objOriginal->save();
+			}
+			
+			$objModel->draftState= '';
+			$objModel->save();
+			
 		}
-		
-		$blnSave = false;
-		
-		// apply changes 
-		if(in_array('modified', $arrState))
-		{
-			$objNew = $this->prepareModel($objModel, false, $objOriginal, false);
-			$objNew->draftState= '';			
-			$objNew->save();
-		}
-		
-		// apply new sorting
-		if(in_array('sorted', $arrState))
-		{
-			$objOriginal->sorting = $objModel->sorting;		
-			$blnSave = true;
-		}
-		
-		// apply new visibility
-		if(in_array('visibility', $arrState))
-		{
-			$objOriginal->invisible = $objModel->invisible;
-			$blnSave = true;
-		}
-		
-		if($blnSave)
-		{
-			$objOriginal = new VersioningModel($objOriginal);
-			$objOriginal->tstamp = time();
-			$objOriginal->save();
-		}
-		
-		$objModel->draftState= '';
-		$objModel->save();
 		
 		if(!$blnDoNoRedirect)
 		{
@@ -334,8 +309,6 @@ abstract class DraftsDataContainer extends DataContainer
 				$this->redirect($this->getReferer());
 			}
 			
-			$strModelClass = $this->getModelClassFromTable($this->strTable);
-			
 			// limit by draft to avoid hacking attemps
 			$this->import('Database');
 			$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftState != "" AND pid=? AND ptable=? AND ' . $this->Database->findInSet('id', $arrIds);
@@ -343,7 +316,7 @@ abstract class DraftsDataContainer extends DataContainer
 
 			while($objResult->next())
 			{
-				$objModel = new $strModelClass($objResult);
+				$objModel = new $this->strModel($objResult);
 				$this->applyDraft($objModel, true);
 			}
 			
@@ -361,15 +334,13 @@ abstract class DraftsDataContainer extends DataContainer
 				$this->redirect($this->getReferer());
 			}
 			
-			$strModelClass = $this->getModelClassFromTable($this->strTable);
-			
 			$this->import('Database');
 			$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftState != "" AND pid=? AND ptable=? AND ' . $this->Database->findInSet('id', $arrIds);
 			$objResult = $this->Database->prepare($strQuery)->execute($this->objDraft->id, 'tl_drafts');
 
 			while($objResult->next())
 			{
-				$objModel = new $strModelClass($objResult);
+				$objModel = new $this->strModel($objResult);
 				$this->resetDraft($objModel, true);
 			}
 			
@@ -391,22 +362,6 @@ abstract class DraftsDataContainer extends DataContainer
 		}
 		
 		return $strBuffer;
-	}
-
-
-	/**
-	 * create singleton
-	 * 
-	 * return DraftsDataContainer 
-	 */
-	public static function getInstance()
-	{
-		if(static::$objInstance === null)
-		{
-			static::$objInstance = new static();
-		}
-		
-		return static::$objInstance;
 	}
 
 	
@@ -438,8 +393,8 @@ abstract class DraftsDataContainer extends DataContainer
 		}
 		elseif($this->objDraft !== null)
 		{
-			$strModelClass = $this->getModelClassFromTable($this->strTable);
-			$objModel = $strModelClass::findByPK($insertID);
+			$strModel = $this->strModel;
+			$objModel = $strModel::findByPK($insertID);
 			
 			$objNew = $this->prepareModel($objModel, true, $objModel, true, true);
 			$objNew->save();
@@ -485,16 +440,18 @@ abstract class DraftsDataContainer extends DataContainer
 	 */
 	public function onCut($objDc)
 	{
+		var_dump('$expression');
+		//die();
 		if($this->objDraft === null)
 		{
 			return;
 		}
-		
-		$strQuery 	= 'SELECT j.id, j.draftState, t.sorting FROM ' . $this->strTable . ' t'
+
+		$strQuery 	= 'SELECT t.id, t.draftState, t.sorting FROM ' . $this->strTable . ' t'
 					. ' LEFT JOIN ' . $this->strTable . ' j ON j.id = t.draftRelated'
-					. ' WHERE t.pid=? AND t.ptable=? AND j.id>0 AND t.sorting != j.sorting';
+					. ' WHERE t.pid=? AND t.ptable=? AND (t.sorting != j.sorting OR t.draftRelated IS null)';
 							
-		$objResult = $this->Database->prepare($strQuery)->execute($this->objDraft->pid, $this->objDraft->ptable);
+		$objResult = $this->Database->prepare($strQuery)->execute($this->objDraft->id, 'tl_drafts');
 
 		if($objResult->numRows < 1)
 		{
@@ -568,14 +525,45 @@ abstract class DraftsDataContainer extends DataContainer
 			$arrSet = array('draftState' => $arrState);		
 			$this->Database->prepare('UPDATE ' . $this->strTable . ' %s WHERE id=?')->set($arrSet)->execute($objDc->id);
 			
-			// redirect so element is not deleted, not nessesary on applyDraft
 			$this->redirect($this->getReferer());
 		}
 		
-		// remove pid, reviseTable will do the rest
+		// add draft element to tl_undo as well
 		elseif($objDc->activeRecord->draftRelated != null)
 		{
-			$this->Database->query('UPDATE ' . $this->strTable . ' SET pid="" WHERE id=' . $objDc->activeRecord->draftRelated);			
+			// get last undo
+			$objUndo = $this->Database->prepare('SELECT * FROM tl_undo WHERE fromTable=? AND pid=? ORDER BY id DESC')->limit(1)->execute($this->strTable, $this->User->id);
+			
+			// no undo set found, just delete it
+			if($objUndo->numRows < 1)
+			{
+				$this->switchMode($objDc->activeRecord->draftRelated);
+				$dc = new DC_Table($this->strTable);
+				$dc->delete(true);
+				$this->switchMode($objDc->id);
+			}
+			else
+			{
+				$arrData = unserialize($objUndo->data);
+				
+				$strModel = $this->strModel;
+				$objSave = $strModel::findOneBy('draftRelated', $objDc->id);
+				
+				if($objSave !== null)
+				{
+					$arrData[$this->strTable][$objSave->id] = $objSave->row();
+				}
+				
+				$arrSet = array
+				(
+					'tstamp'	=> time(),
+					'data'		=> $arrData,
+					'affectedRows'	=> $objUndo->affectedRows+1,
+				);
+				
+				$this->Database->prepare('UPDATE tl_undo %s WHERE id=?')->set($arrSet)->execute($objUndo->id);
+				$objSave->delete();				
+			}
 		}
 	}
 	
@@ -593,18 +581,18 @@ abstract class DraftsDataContainer extends DataContainer
 		// set draft state to modified because we do not know what has changed
 		if($this->blnDraftMode)
 		{			
-			$arrSet = array('draftState' => array('modified'));
+			$arrSet = array('draftState' => array('modified'), 'tstamp' => time);
 			$this->Database->prepare('UPDATE ' . $strTable . ' %s WHERE id=?')->set($arrSet)->executeUncached($intId);
 		}
 		// create new version of draft
 		elseif($this->objDraft !== null)
 		{
-			$strModelClass = $this->getModelClassFromTable($this->strTable);
 			$objResult = $this->Database->prepare('SELECT id, draftRelated FROM ' . $this->strTable . ' WHERE id=?')->execute($intId);
 			
 			if($objResult->numRows == 1 && $objResult->draftRelated > 0)
-			{				
-				$objModel = $this->prepareModel($strModelClass::findByPK($intId), true, $objResult);
+			{
+				$strModel = $this->strModel;
+				$objModel = $this->prepareModel($strModel::findByPK($intId), true, $objResult);
 				$objModel->save();				
 			}
 		}
@@ -636,8 +624,6 @@ abstract class DraftsDataContainer extends DataContainer
 		}
 		elseif($this->objDraft !== null)
 		{
-			$strModelClass = $this->getModelClassFromTable($this->strTable);
-
 			if($objDc->activeRecord->draftRelated != null)
 			{
 				$objModel = $this->prepareModel($objDc->activeRecord, true, $objDc->activeRecord);
@@ -656,11 +642,11 @@ abstract class DraftsDataContainer extends DataContainer
 	 */
 	public function onToggleVisibility($blnVisible, $objDc)
 	{
-		$strModelClass = $this->getModelClassFromTable($this->strTable);
-			
+		$strModel = $this->strModel;
+		
 		if($this->blnDraftMode)
 		{
-			$objModel = $strModelClass::findByPK($this->intId);
+			$objModel = $strModel::findByPK($this->intId);
 			$arrState = unserialize($objModel->draftState);
 
 			if($blnVisible == ($objModel->invisible == '1') || (is_array($arrState) && in_array('visibility', $arrState)))
@@ -682,11 +668,11 @@ abstract class DraftsDataContainer extends DataContainer
 			{
 				$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftRelated=?';
 				$objResult = $this->Database->prepare($strQuery)->execute($this->intId);
-				$objModel = new $strModelClass($objResult);
+				$objModel = new $this->strModel($objResult);
 			}
 			else
 			{
-				$objModel = $strModelClass::findByPK($objDc->activeRecord->draftRelated);
+				$objModel = $strModel::findByPK($objDc->activeRecord->draftRelated);
 			}
 			
 			if($objModel !== null && $blnVisible != $objModel->invisible)
@@ -717,12 +703,12 @@ abstract class DraftsDataContainer extends DataContainer
 	 */
 	public function resetDraft($objModel = null, $blnDoNoRedirect=false)
 	{
-		$strModelClass = $this->getModelClassFromTable($this->strTable);
+		$strModel = $this->strModel;
 		
 		// try to find model
 		if($objModel === null || get_class($objModel) == 'Contao\DC_Table')
 		{
-			$objModel = $strModelClass::findByPK($this->intId);
+			$objModel = $strModel::findByPK($this->intId);
 			
 			if($objModel === null)
 			{
@@ -737,78 +723,62 @@ abstract class DraftsDataContainer extends DataContainer
 		}
 		
 		$objModel = new VersioningModel($objModel);
-		$objOriginal = $strModelClass::findOneBy('draftRelated', $objModel->id);
+		$objOriginal = $strModel::findOneBy('draftRelated', $objModel->id);
 		$arrState = unserialize($objModel->draftState);
-		$blnSave = false;
-		
-		// no original exists, so delete draft
-		if($objOriginal === null)
-		{
-			// let's use dc_table so undo record is created
-			Input::setGet('id', $objModel->id);
-			$dc = new DC_Table($this->strTable);
-			$dc->delete(true);
-			
-			if(!$blnDoNoRedirect)
-			{
-				$this->redirect($this->getReferer());					
-			}
-			return;
-		}
-		
+		$blnSave = false;		
+
 		// modified draft, reset to original
-		elseif(in_array('modified', $arrState)) 
+		if(in_array('modified', $arrState)) 
 		{
 			$objNew = $this->prepareModel($objOriginal, true, $objModel);
 			$objNew->draftState = '';
 			$objNew->save();
-				
-			if(!$blnDoNoRedirect)
-			{
-				$this->redirect($this->getReferer());					
-			}
-			return;
-		}
-		
-		// sorting changed, reset to original
-		if(in_array('sorted', $arrState)) 
-		{
-			$objModel->sorting = $objOriginal->sorting;
-			$blnSave = true;			
-		}
-		
-		// sorting changed, reset to original
-		if(in_array('visibility', $arrState)) 
-		{
-			$objModel->invisible = $objOriginal->invisible;
-			$blnSave = true;			
-		}
-		
-		// marked as delete, just remove label
-		elseif(in_array('delete', $arrState))
-		{
-			$blnSave = true;
 		}
 		
 		// delete new one
-		if(in_array('new', $arrState))
+		elseif(in_array('new', $arrState))
 		{
 			// let's use dc_table so undo record is created
 			Input::setGet('id', $objModel->id);
 			$dc = new DC_Table($this->strTable);
 			$dc->delete(true);
 		}
-		elseif($blnSave) 
+		
+		else
 		{
-			$objModel->tstamp = time();
-			$objModel->draftState = '';
-			$objModel->save();
+			// just reset draft state
+			if(in_array('delete', $arrState) || $objOriginal === null)
+			{
+				$blnSave = true;
+			}
+			
+			// sorting changed, reset to original
+			elseif(in_array('sorted', $arrState)) 
+			{
+				$objModel->sorting = $objOriginal->sorting;
+				$blnSave = true;			
+			}
+			
+			// sorting changed, reset to original
+			elseif(in_array('visibility', $arrState)) 
+			{
+				$objModel->invisible = $objOriginal->invisible;
+				$blnSave = true;			
+			}
+			
+			if($blnSave) 
+			{
+				$objModel->tstamp = time();
+				$objModel->draftState = '';
+				$objModel->save();
+			}
 		}
 		
 		if(!$blnDoNoRedirect)
 		{
 			$this->redirect($this->getReferer());					
 		}
+		
 		return;
 	}
 
@@ -1101,13 +1071,12 @@ abstract class DraftsDataContainer extends DataContainer
 				$this->objDraft->ptable = $GLOBALS['TL_DCA'][$this->strTable]['config']['dtable'];
 				$this->objDraft->tstamp = time();
 				$this->objDraft->save();
-				
-				$strModelClass = $this->getModelClassFromTable($this->strTable);
+
 				$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=?')->execute($this->objDraft->pid, $this->objDraft->ptable); 
 				
 				while($objResult->next())
 				{
-					$objModel = new $strModelClass($objResult);
+					$objModel = new $this->strModel($objResult);
 					
 					$objNew = $this->prepareModel($objModel, true, $objModel);
 					$objNew->save(true);
@@ -1255,7 +1224,9 @@ abstract class DraftsDataContainer extends DataContainer
 	 * @return bool
 	 */
 	protected function permissionRuleDraftPermission($objDc, &$arrAttributes, &$strError)
-	{			
+	{
+		$strModel = $this->strModel;
+		
 		// store access to root in session 
 		if(!$this->blnDraftMode)
 		{
@@ -1275,7 +1246,7 @@ abstract class DraftsDataContainer extends DataContainer
 				$arrPerm[$this->objDraft->ptable] = array();
 			}
 			
-			// store permissioin in session so draft mode can access it
+			// store permission in session so draft mode can access it
 			$arrPerm[$this->objDraft->ptable][$this->objDraft->pid] = true;
 			$this->Session->set('draftPermission', $arrPerm);
 			
@@ -1322,16 +1293,14 @@ abstract class DraftsDataContainer extends DataContainer
 		}
 
 		// check permission for child element
-		$strModelClass = $this->getModelClassFromTable($this->strTable);
-		
-		$objModel = $strModelClass::findOneBy('draftRelated', $this->intId);
+		$objDraft = $strModel::findByPK($this->intId);
+		$objModel = $strModel::findByPK($objDraft->draftRelated);
 		
 		if($objModel === null)
-		{
-			$objDraft = $strModelClass::findByPK($this->intId);
+		{			
 			$arrState = unserialize($objDraft->draftState);
 			
-			if(in_array('new', $arrState))
+			if(is_array($arrState) && in_array('new', $arrState))
 			{
 				return true;
 			}
@@ -1349,7 +1318,7 @@ abstract class DraftsDataContainer extends DataContainer
 		
 		if($intPid !== null)
 		{
-			$objModel = $strModelClass::findOneBy('draftRelated', $intPid);
+			$objModel = $strModel::findOneBy('draftRelated', $intPid);
 			Input::setGet('pid', $objModel->id);
 		}
 		
@@ -1378,16 +1347,14 @@ abstract class DraftsDataContainer extends DataContainer
 	 */
 	protected function prepareModel($objCopy, $blnDraft=false, $objReference=null, $blnSwitchIds=true, $blnNew=false, $blnVersioning=true)
 	{
-		$strClass = $this->getModelClassFromTable($this->strTable);
-		
 		if(is_array($objCopy))
 		{
-			$objNew = new $strClass();
+			$objNew = new $this->strModel();
 			$objNew->setRow($objCopy);
 		}
 		elseif($objCopy instanceof Result)
 		{
-			$objNew = new $strClass($objCopy);
+			$objNew = new $this->strModel($objCopy);
 		}
 		else
 		{
@@ -1397,7 +1364,10 @@ abstract class DraftsDataContainer extends DataContainer
 		// versioning
 		if($blnVersioning)
 		{
-			$objNew = new VersioningModel($objNew);
+			if(!$objNew instanceof VersioningModel)
+			{
+				$objNew = new VersioningModel($objNew);				
+			}
 		}
 		elseif($objNew instanceof VersioningModel)
 		{
@@ -1437,4 +1407,28 @@ abstract class DraftsDataContainer extends DataContainer
 		return $objNew;
 	}
 
+
+	/**
+	 * switch to other mode
+	 * this is neccesary loading DC_Table
+	 *  
+	 */
+	protected function switchMode($intId)
+	{
+		if($this->blnDraftMode)
+		{
+			Input::setGet('id', $intId);
+			Input::setGet('draft', '0');
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] = $GLOBALS['TL_DCA'][$this->strTable]['config']['dtable'];
+		}
+		else
+		{
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['dtable'] = $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'];
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] = 'tl_drafts';
+			Input::setGet('id', $intId);
+			Input::setGet('draft', '1');
+		}
+		
+		$this->blnDraftMode = !$this->blnDraftMode;
+	}
 }
