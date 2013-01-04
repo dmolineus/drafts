@@ -76,12 +76,14 @@ class TaskController extends Backend
 		if($objDraft->taskid == '0' || $objDraft->taskid == '' || $blnCreate)
 		{
 			$this->loadLanguageFile('tl_drafts');
+			$this->loadLanguageFile('modules');
 			$objResult = $this->Database->query('SELECT * FROM ' . $objDraft->ptable . ' WHERE id=' . $objDraft->pid);
 			
+			$strField = $GLOBALS['TL_DRAFTS'][$objDraft->ptable]['title'];
 			$strTitle = sprintf($GLOBALS['TL_LANG']['tl_drafts']['draftTaskTitle'],
-				$GLOBALS['TL_LANG']['MOD'][Input::get('do')][0],
+				$GLOBALS['TL_LANG']['MOD'][$GLOBALS['TL_DRAFTS'][$objDraft->ptable]['module']][0],
 				$objDraft->pid,
-				$objResult->title != '' ? $objResult->{$GLOBALS['TL_DRAFTS'][$objDraft->ptable]['title']} : $GLOBALS['TL_LANG']['tl_drafts']['draftTaskNoTitle']
+				$objResult->$strField != '' ? $objResult->$strField : $GLOBALS['TL_LANG']['tl_drafts']['draftTaskNoTitle']
 			); 
 			
 			// Insert task
@@ -90,7 +92,8 @@ class TaskController extends Backend
 				'tstamp' => time(),
 				'createdBy' => $this->User->id,
 				'title' => $strTitle,
-				'draftsid' => $objDraft->id
+				'draftsid' => $objDraft->id,
+				'deadline'	=> time() + 86400,
 			);
 
 			$objTask = $this->Database->prepare("INSERT INTO tl_task %s")->set($arrSet)->execute();
