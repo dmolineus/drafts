@@ -64,16 +64,14 @@ class VersioningModel extends Controller
 	 */
 	public function __get($strKey)
 	{
-		$strFirst = substr($strKey, 0, 1);
-		
-		// first case is upper case so we asume an object here
-		if(ucfirst($strFirst) === $strFirst && isset($this->arrObjects[$strKey]))
+		if(parent::__get($strKey) !== null)
 		{
-			return $this->arrObjects[$strKey];
+			return parent::__get($strKey);
 		}
 		
 		return $this->objModel->$strKey;
 	}
+	
 	
 	/**
 	 * clone the model
@@ -87,12 +85,12 @@ class VersioningModel extends Controller
 	/**
 	 * check if model argument isset 
 	 * 
-	 * @param string method
+	 * @param string var name
 	 * @return bool
 	 */
-	public function __isset($strMethod)
+	public function __isset($strKey)
 	{
-		return $this->objModel->__isset($strMethod);
+		return isset($this->objModel->$strKey);
 	}
 	
 	
@@ -127,17 +125,18 @@ class VersioningModel extends Controller
 	 */
 	public function save($blnForceInsert=false, $blnIgnoreVersioning=false)
 	{
+		$blnVersioning = !$blnIgnoreVersioning && $GLOBALS['TL_DCA'][$strTable]['config']['enableVersioning'];
 		$strTable = $this->objModel->getTable();
 		$strPk = $this->objModel->getPk();
 		
-		if(!$blnIgnoreVersioning && $GLOBALS['TL_DCA'][$strTable]['config']['enableVersioning'] && ($blnForceInsert || isset($this->$strPk)))
+		if($blnVersioning && !$blnForceInsert && isset($this->$strPk))
 		{
 			$this->createInitialVersion($strTable, $this->$strPk);
 		}
 		
 		$this->objModel->save($blnForceInsert);
 		
-		if(!$blnIgnoreVersioning && $GLOBALS['TL_DCA'][$strTable]['config']['enableVersioning'])
+		if($blnVersioning)
 		{
 			$this->createNewVersion($strTable, $this->$strPk);
 		}
