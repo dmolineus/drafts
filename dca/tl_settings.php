@@ -12,7 +12,7 @@
  *  
  **/
  
-$GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] .= ';{drafts_legend},draftModules';
+$GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] .= ';{drafts_legend},draftModules,draftsUseTaskModule';
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['draftModules'] = array
 (
@@ -20,5 +20,12 @@ $GLOBALS['TL_DCA']['tl_settings']['fields']['draftModules'] = array
 	'inputType'		=> 'checkbox',
 	'options'		=> &$GLOBALS['TL_CONFIG']['draftModulesOptions'],
 	'reference'		=> &$GLOBALS['TL_LANG']['MOD'],
-	'eval'			=> array('multiple' => true,),
+	'eval'			=> array('multiple' => true),
+);
+
+$GLOBALS['TL_DCA']['tl_settings']['fields']['draftsUseTaskModule'] = array
+(
+	'label'			=> &$GLOBALS['TL_LANG']['tl_settings']['draftsUseTaskModule'],
+	'inputType'		=> 'checkbox',
+	'eval'			=> array('tl_class' => 'w50 clr'),
 );

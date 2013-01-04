@@ -15,3 +15,6 @@
 $GLOBALS['TL_LANG']['tl_settings']['drafts_legend'] = 'Entwurfsmodus';
 $GLOBALS['TL_LANG']['tl_settings']['draftModules'][0] = 'Entwurfsmodus aktivieren';
 $GLOBALS['TL_LANG']['tl_settings']['draftModules'][1] = 'Wählen Sie die Module aus, für die der Entwurfsmodus aktiviert werden soll.';
+
+$GLOBALS['TL_LANG']['tl_settings']['draftsUseTaskModule'][0] = 'Task Module verwenden';
+$GLOBALS['TL_LANG']['tl_settings']['draftsUseTaskModule'][1] = 'Task Modul zur Freigabeaufforderung verwenden';

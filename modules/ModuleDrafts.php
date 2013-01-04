@@ -19,7 +19,7 @@ use Backend, Input, DraftsModel;
 /**
  * 
  */
-class DraftsModule extends Backend
+class ModuleDrafts extends Backend
 {
 	protected $objDraft;
 	

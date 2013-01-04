@@ -15,17 +15,18 @@
 ClassLoader::addClasses(array
 (
 	// datacontainers
-	'Netzmacht\Drafts\DataContainer\DraftsDataContainer' => 'system/modules/drafts/datacontainers/DraftsDataContainer.php',
-	'Netzmacht\Drafts\DataContainer\Content' => 'system/modules/drafts/datacontainers/Content.php',
+	'Netzmacht\Drafts\DataContainer\DraftsDataContainer' 	=> 'system/modules/drafts/datacontainers/DraftsDataContainer.php',
+	'Netzmacht\Drafts\DataContainer\Content' 				=> 'system/modules/drafts/datacontainers/Content.php',
+	'Netzmacht\Drafts\DataContainer\Drafts' 				=> 'system/modules/drafts/datacontainers/Drafts.php',
 	
 	// models
-	'DraftsModel' => 'system/modules/drafts/models/DraftsModel.php',
-	'Netzmacht\Drafts\Model\VersioningModel' => 'system/modules/drafts/models/VersioningModel.php',
+	'DraftsModel' 											=> 'system/modules/drafts/models/DraftsModel.php',
+	'Netzmacht\Drafts\Model\VersioningModel' 				=> 'system/modules/drafts/models/VersioningModel.php',
 	
 	// modules
-	'Netzmacht\Drafts\Module\DraftsModule' => 'system/modules/drafts/modules/DraftsModule.php',
+	'Netzmacht\Drafts\Module\ModuleDrafts' 					=> 'system/modules/drafts/modules/ModuleDrafts.php',
+	'ModuleTasks' 											=> 'system/modules/drafts/modules/ModuleTasks.php',
 ));
-
 
 TemplateLoader::addFiles(array 
 (

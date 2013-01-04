@@ -1270,16 +1270,24 @@ abstract class DraftsDataContainer extends DataContainer
 			{
 				$arrPerm = array();
 			}
+			if($arrPerm[$this->objDraft->ptable] === null || !is_array($arrPerm[$this->objDraft->ptable]))
+			{
+				$arrPerm[$this->objDraft->ptable] = array();
+			}
 			
 			// store permissioin in session so draft mode can access it
-			$arrPerm[$this->objDraft->id] = true;
+			$arrPerm[$this->objDraft->ptable][$this->objDraft->pid] = true;
 			$this->Session->set('draftPermission', $arrPerm);
 			
 			if(Input::get('redirect') == '1' && $this->objDraft !== null)
 			{
-				\Message::reset();
 				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&draft=1&redirect=2&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->id, REQUEST_TOKEN));
-				return false;								
+				return false;		
+			}
+			elseif (Input::get('redirect') == 'task') 
+			{
+				$this->redirect(sprintf('contao/main.php?do=tasks&act=edit&id=%s&redirect=2&rt=%s', Input::get('taskid'), REQUEST_TOKEN));
+				return false;				
 			}
 			
 			return true;
@@ -1299,7 +1307,7 @@ abstract class DraftsDataContainer extends DataContainer
 			$arrPerm = $this->Session->get('draftPermission');
 			
 			// redirect to live view to check permission, use redirect param to avoid recursively redirects
-			if(!isset($arrPerm[$this->intId]))
+			if(!isset($arrPerm[$this->objDraft->ptable][$this->objDraft->pid]))
 			{
 				if(Input::get('redirect') == '2')
 				{

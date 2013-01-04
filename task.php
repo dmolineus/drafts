@@ -57,51 +57,50 @@ class TaskController extends Backend
 		$this->import('Database');
 		$this->Database->query('UPDATE tl_drafts d SET taskid="" WHERE taskid>0 AND NOT EXISTS (SELECT id FROM tl_task WHERE id = d.taskid)');
 		
-		$this->objDraft = DraftsModel::findByPK(Input::get('id'));
+		$objDraft = DraftsModel::findByPK(Input::get('id'));
 		
-		if($this->objDraft === null)
+		if($objDraft === null)
 		{
 			$this->log('No Draft with id "' .Input::get('id'). '" found', 'DraftsModule createTask()', TL_ERROR);
 			$this->redirect('contao/main.php?act=error');
 		}
 		
 		$this->import('BackendUser', 'User');
+		
+		if($objDraft->taskid > 0)
+		{
+			$objTask = $this->Database->query('SELECT id FROM tl_task WHERE id=' . $objDraft->taskid);			
+			$blnCreate = ($objTask->numRows < 0);
+		}
 				
-		if($this->objDraft->taskid == '0' || $this->objDraft->taskid == '')
+		if($objDraft->taskid == '0' || $objDraft->taskid == '' || $blnCreate)
 		{
 			$this->loadLanguageFile('tl_drafts');
-			$objResult = $this->Database->query('SELECT * FROM ' . $this->objDraft->ptable . ' WHERE id=' . $this->objDraft->pid);
+			$objResult = $this->Database->query('SELECT * FROM ' . $objDraft->ptable . ' WHERE id=' . $objDraft->pid);
 			
 			$strTitle = sprintf($GLOBALS['TL_LANG']['tl_drafts']['draftTaskTitle'],
 				$GLOBALS['TL_LANG']['MOD'][Input::get('do')][0],
-				$this->objDraft->pid,
-				$objResult->title != '' ? $objResult->title : $GLOBALS['TL_LANG']['tl_drafts']['draftTaskNoTitle']
+				$objDraft->pid,
+				$objResult->title != '' ? $objResult->{$GLOBALS['TL_DRAFTS'][$objDraft->ptable]['title']} : $GLOBALS['TL_LANG']['tl_drafts']['draftTaskNoTitle']
 			); 
 			
-			
-
 			// Insert task
 			$arrSet = array
 			(
 				'tstamp' => time(),
 				'createdBy' => $this->User->id,
-				'title' => $strTitle
+				'title' => $strTitle,
+				'draftsid' => $objDraft->id
 			);
 
 			$objTask = $this->Database->prepare("INSERT INTO tl_task %s")->set($arrSet)->execute();
-			$this->objDraft->taskid = $objTask->insertId;
-			$this->objDraft->save();
-		}
-		// hotfix: switch the created id to the current user, otherwise it is not possible to edit it
-		// see: https://github.com/cliffparnitzky/TaskCenter/issues/13
-		else 
-		{
-			$this->Database->query('UPDATE tl_task SET createdBy=' . $this->User->id . ' WHERE id=' . $this->objDraft->taskid);		
+			$objDraft->taskid = $objTask->insertId;
+			$objDraft->save();
 		}
 		
 		Input::setGet('do', 'tasks');
 		Input::setGet('act', 'edit');
-		Input::setGet('id', $this->objDraft->taskid);
+		Input::setGet('id', $objDraft->taskid);
 		
 		TemplateLoader::addFiles(array 
 		(

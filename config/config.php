@@ -18,32 +18,25 @@ $GLOBALS['TL_CONFIG']['draftModules'] = unserialize($GLOBALS['TL_CONFIG']['draft
 
 $GLOBALS['TL_JAVASCRIPT'][] = 'system/modules/drafts/assets/script.js';
 
-// enable draft mode for articles
-if(in_array('article', $GLOBALS['TL_CONFIG']['draftModules']))
+// enable draft mode for enabled modules
+foreach ($GLOBALS['TL_CONFIG']['draftModules'] as $strModule) 
 {
-	$GLOBALS['BE_MOD']['content']['article']['apply']		= array('Netzmacht\Drafts\DataContainer\Content', 'applyDraft');
-	$GLOBALS['BE_MOD']['content']['article']['reset']		= array('Netzmacht\Drafts\DataContainer\Content', 'resetDraft');
-	$GLOBALS['BE_MOD']['content']['article']['task']		= array('Netzmacht\Drafts\Module\DraftsModule', 'createTask');
-	$GLOBALS['BE_MOD']['content']['article']['tables'][] 	= 'tl_drafts';
-	$GLOBALS['BE_MOD']['content']['article']['stylesheet'] 	= 'system/modules/drafts/assets/style.css';
+	$GLOBALS['BE_MOD']['content'][$strModule]['apply']		= array('Netzmacht\Drafts\DataContainer\Content', 'applyDraft');
+	$GLOBALS['BE_MOD']['content'][$strModule]['reset']		= array('Netzmacht\Drafts\DataContainer\Content', 'resetDraft');
+	$GLOBALS['BE_MOD']['content'][$strModule]['task']		= array('Netzmacht\Drafts\Module\ModuleDrafts', 'createTask');
+	$GLOBALS['BE_MOD']['content'][$strModule]['tables'][] 	= 'tl_drafts';
+	$GLOBALS['BE_MOD']['content'][$strModule]['stylesheet'] = 'system/modules/drafts/assets/style.css';
 }
 
-// enable draft mode for news
-if(in_array('news', $GLOBALS['TL_CONFIG']['draftModules']))
-{
-	$GLOBALS['BE_MOD']['content']['news']['apply']			= array('Netzmacht\Drafts\DataContainer\Content', 'applyDraft');
-	$GLOBALS['BE_MOD']['content']['news']['reset']			= array('Netzmacht\Drafts\DataContainer\Content', 'resetDraft');
-	$GLOBALS['BE_MOD']['content']['news']['task']			= array('Netzmacht\Drafts\Module\DraftsModule', 'createTask');
-	$GLOBALS['BE_MOD']['content']['news']['tables'][] 		= 'tl_drafts';
-	$GLOBALS['BE_MOD']['content']['news']['stylesheet'] 	= 'system/modules/drafts/assets/style.css';
-}
+// store drafts information, needed for ModuleTasks
+$GLOBALS['TL_DRAFTS']['tl_calendar_events']['module'] 	= 'calendar';
+$GLOBALS['TL_DRAFTS']['tl_calendar_events']['ctable'] 	= 'tl_content';
+$GLOBALS['TL_DRAFTS']['tl_calendar_events']['title']	= 'title';
 
-// enable draft mode for calendar
-if(in_array('calendar', $GLOBALS['TL_CONFIG']['draftModules']))
-{
-	$GLOBALS['BE_MOD']['content']['calendar']['apply']		= array('Netzmacht\Drafts\DataContainer\Content', 'applyDraft');
-	$GLOBALS['BE_MOD']['content']['calendar']['reset']		= array('Netzmacht\Drafts\DataContainer\Content', 'resetDraft');
-	$GLOBALS['BE_MOD']['content']['calendar']['task']		= array('Netzmacht\Drafts\Module\DraftsModule', 'createTask');
-	$GLOBALS['BE_MOD']['content']['calendar']['tables'][] 	= 'tl_drafts';
-	$GLOBALS['BE_MOD']['content']['calendar']['stylesheet'] = 'system/modules/drafts/assets/style.css';
-}
+$GLOBALS['TL_DRAFTS']['tl_article']['module'] 			= 'article';
+$GLOBALS['TL_DRAFTS']['tl_article']['ctable'] 			= 'tl_content';
+$GLOBALS['TL_DRAFTS']['tl_article']['title']			= 'title';
+
+$GLOBALS['TL_DRAFTS']['tl_news']['module'] 				= 'calendar';
+$GLOBALS['TL_DRAFTS']['tl_news']['ctable'] 				= 'tl_content';
+$GLOBALS['TL_DRAFTS']['tl_news']['title']				= 'headline';
