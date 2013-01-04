@@ -11,7 +11,7 @@
  * @copyright Copyright 2012 David Molineus netzmacht creative 
  *  
  **/
- 
+
 namespace Netzmacht\Drafts\DataContainer;
 use Netzmacht\Utils\DataContainer, 
 	Netzmacht\Drafts\Model\VersioningModel, 
@@ -74,7 +74,7 @@ abstract class DraftableDataContainer extends DataContainer
 	{
 		parent::__construct();
 		
-		$this->blnDraftMode = Input::get('draft') == '1';		
+		$this->blnDraftMode = Input::get('draft') == '1';
 		$this->strModel = $this->getModelClassFromTable($this->strTable);
 		$this->strAction = Input::get('act') == '' ? Input::get('key') : Input::get('act');
 		
@@ -85,8 +85,8 @@ abstract class DraftableDataContainer extends DataContainer
 		}
 		else
 		{
-			$this->intId = Input::get('id');			
-		}		
+			$this->intId = Input::get('id');
+		}
 	}
 	
 	
@@ -119,7 +119,7 @@ abstract class DraftableDataContainer extends DataContainer
 				
 				if(!$blnDoNoRedirect)
 				{
-					$this->redirect('contao/main.php?act=error');					
+					$this->redirect('contao/main.php?act=error');
 				}
 				return;
 			}
@@ -157,14 +157,14 @@ abstract class DraftableDataContainer extends DataContainer
 			// apply changes 
 			if($this->hasState($objModel, 'modified'))
 			{
-				$objNew = $this->prepareModel($objModel, false, $objOriginal, false);		
+				$objNew = $this->prepareModel($objModel, false, $objOriginal, false);
 				$objNew->save();
 			}
 			
 			// apply new sorting
 			if($this->hasState($objModel, 'sorted'))
 			{
-				$objOriginal->sorting = $objModel->sorting;		
+				$objOriginal->sorting = $objModel->sorting;
 				$blnSave = true;
 			}
 			
@@ -189,7 +189,7 @@ abstract class DraftableDataContainer extends DataContainer
 		
 		if(!$blnDoNoRedirect)
 		{
-			$this->redirect($this->getReferer());					
+			$this->redirect($this->getReferer());
 		}
 	}
 	
@@ -351,7 +351,7 @@ abstract class DraftableDataContainer extends DataContainer
 		
 		if($this->genericHasAccess($arrAttributes))
 		{
-			$strBuffer .= '<input type="submit" class="tl_submit" name="applyDrafts" value="' . $GLOBALS['TL_LANG'][$this->strTable]['applyDrafts'] . '">';			
+			$strBuffer .= '<input type="submit" class="tl_submit" name="applyDrafts" value="' . $GLOBALS['TL_LANG'][$this->strTable]['applyDrafts'] . '">';
 		}
 		
 		return $strBuffer;
@@ -500,10 +500,10 @@ abstract class DraftableDataContainer extends DataContainer
 			}
 			elseif(!$this->removeState($objModel, 'delete'))
 			{
-				$this->setState($objModel, 'delete');			
-			}			
+				$this->setState($objModel, 'delete');
+			}
 			
-			$objModel->save();			
+			$objModel->save();
 			$this->redirect($this->getReferer());
 		}
 		
@@ -524,7 +524,7 @@ abstract class DraftableDataContainer extends DataContainer
 			}
 			
 			// store draft in tl_undo
-			// TODO: handle ctable elements		
+			// TODO: handle ctable elements
 			$strModel = $this->strModel;
 			$objSave = $strModel::findOneBy('draftRelated', $objDc->id);
 			
@@ -574,7 +574,7 @@ abstract class DraftableDataContainer extends DataContainer
 			{
 				$strModel = $this->strModel;
 				$objModel = $this->prepareModel($strModel::findByPK($intId), true, $objResult);
-				$objModel->save();				
+				$objModel->save();
 			}
 		}
 	}
@@ -613,7 +613,7 @@ abstract class DraftableDataContainer extends DataContainer
 			{
 				$objModel = $this->prepareModel($objDc->activeRecord, true, $objDc->activeRecord);
 				$objModel->save();
-			}	
+			}
 		}
 	}
 
@@ -634,7 +634,7 @@ abstract class DraftableDataContainer extends DataContainer
 			$objModel = $strModel::findByPK($this->intId);
 
 			if($blnVisible == ($objModel->invisible == '1') || $this->hasState($objModel, 'visibility'))
-			{				
+			{
 				return $blnVisible;
 			}
 			
@@ -662,7 +662,7 @@ abstract class DraftableDataContainer extends DataContainer
 				$objModel = new VersioningModel($objModel);
 				$arrState = unserialize($objModel->draftState);
 				
-				$this->removeState($objModel, 'visibility');				
+				$this->removeState($objModel, 'visibility');
 				$objModel->invisible = $blnVisible;
 				$objModel->tstamp = time();
 				$objModel->save();
@@ -694,7 +694,7 @@ abstract class DraftableDataContainer extends DataContainer
 				
 				if(!$blnDoNoRedirect)
 				{
-					$this->redirect('contao/main.php?act=error');					
+					$this->redirect('contao/main.php?act=error');
 				}
 				return;
 			}
@@ -726,7 +726,7 @@ abstract class DraftableDataContainer extends DataContainer
 				Input::setGet('act', 'delete');
 				$dc = new DC_Table($this->strTable);
 				$dc->delete(true);	
-				Input::setGet('id', $this->intId);			
+				Input::setGet('id', $this->intId);
 			}
 		}
 		
@@ -742,14 +742,14 @@ abstract class DraftableDataContainer extends DataContainer
 			elseif($this->hasState($objModel, 'sorted')) 
 			{
 				$objModel->sorting = $objOriginal->sorting;
-				$blnSave = true;			
+				$blnSave = true;
 			}
 			
 			// sorting changed, reset to original
 			elseif($this->hasState($objModel, 'visibility')) 
 			{
 				$objModel->invisible = $objOriginal->invisible;
-				$blnSave = true;			
+				$blnSave = true;
 			}
 			
 			if($blnSave) 
@@ -762,7 +762,7 @@ abstract class DraftableDataContainer extends DataContainer
 		
 		if(!$blnDoNoRedirect)
 		{
-			$this->redirect($this->getReferer());					
+			$this->redirect($this->getReferer());
 		}
 	}
 
@@ -812,10 +812,10 @@ abstract class DraftableDataContainer extends DataContainer
 		
 		if(isset($arrAttributes['modified']))
 		{
-			return  (is_array($arrState) && in_array('modified', $arrState)); 
+			return  (is_array($arrState) && in_array('modified', $arrState));
 		}
 		
-		return (is_array($arrState) && !empty($arrState)); 
+		return (is_array($arrState) && !empty($arrState));
 	}
 	
 	
@@ -839,7 +839,7 @@ abstract class DraftableDataContainer extends DataContainer
 		// grant access if not published
 		if(!$this->isPublished($arrRow))
 		{
-			return true;			
+			return true;
 		}
 		
 		if($arrRow === null || isset($arrAttributes['hide']))
@@ -847,7 +847,7 @@ abstract class DraftableDataContainer extends DataContainer
 			return $this->genericHasAccess($arrAttributes);
 		}
 		
-		$arrAttributes['rule'] = 'hasAccess';	
+		$arrAttributes['rule'] = 'hasAccess';
 		return $this->buttonRuleDisableIcon($strButton, $strHref, $strLabel, $strTitle, $strIcon, $strAttributes, $arrAttributes);
 	}
 	
@@ -868,16 +868,16 @@ abstract class DraftableDataContainer extends DataContainer
 	{
 		if($this->objDraft === null && !$this->isPublished())
 		{
-			return false;			
+			return false;
 		}
 		
 		if(isset($arrAttributes['draft']))
 		{
 			$strHref .= '&table=' . $this->strTable . (($this->objDraft === null) ? ('&mode=create&id=' . $this->intId) : ('&id=' . $this->objDraft->id));
-			return true;	
+			return true;
 		}
 
-		$strHref .= '&table=' . $this->strTable . '&id=' . $this->objDraft->pid;	
+		$strHref .= '&table=' . $this->strTable . '&id=' . $this->objDraft->pid;
 		return true;
 	}
 	
@@ -921,14 +921,14 @@ abstract class DraftableDataContainer extends DataContainer
 
 			$strQuery = sprintf('SELECT * FROM %s WHERE id=%s',
 				$strTable, $arrRow === null ? $this->intId : $arrRow['id']
-			);				
+			);
 			
 			$objResult = $this->Database->query($strQuery);
-			$strValue = $objResult->{$arrAttributes['var']};		
+			$strValue = $objResult->{$arrAttributes['var']};
 		}
 		else 
 		{
-			return false;			
+			return false;
 		}
 			
 		if(isset($arrAttributes['is']))
@@ -939,7 +939,7 @@ abstract class DraftableDataContainer extends DataContainer
 		if(isset($arrAttributes['not']))
 		{
 			return $strValue != $arrAttributes['not'];
-		}			
+		}
 		
 		return false;
 	}
@@ -980,7 +980,7 @@ abstract class DraftableDataContainer extends DataContainer
 		if($this->blnDraftMode)
 		{
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['header_callback'] = array($strClass, 'generateParentHeader');
-			$GLOBALS['TL_DCA'][$this->strTable]['edit']['buttons_callback'][] = array($strClass, 'generateSubmitButtons');		
+			$GLOBALS['TL_DCA'][$this->strTable]['edit']['buttons_callback'][] = array($strClass, 'generateSubmitButtons');
 		}
 		
 		// setup permission rules
@@ -995,7 +995,7 @@ abstract class DraftableDataContainer extends DataContainer
 		
 		if(is_array($GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules']))
 		{
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array_merge($GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'], $arrRules);			
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array_merge($GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'], $arrRules);
 		}
 		else 
 		{
@@ -1051,7 +1051,7 @@ abstract class DraftableDataContainer extends DataContainer
 		{
 			if(in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create'))
 			{
-				$this->objDraft = DraftsModel::findOneByPidAndTable($this->intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);				
+				$this->objDraft = DraftsModel::findOneByPidAndTable($this->intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
 			}
 			else 
 			{		
@@ -1076,7 +1076,7 @@ abstract class DraftableDataContainer extends DataContainer
 				$this->objDraft->tstamp = time();
 				$this->objDraft->save();
 
-				$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=?')->execute($this->objDraft->pid, $this->objDraft->ptable); 
+				$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=?')->execute($this->objDraft->pid, $this->objDraft->ptable);
 				
 				while($objResult->next())
 				{
@@ -1128,7 +1128,7 @@ abstract class DraftableDataContainer extends DataContainer
 				
 				if(\Environment::get('requestUri') != $session['current'])
 				{
-					$session['last'] = $session['current'];			
+					$session['last'] = $session['current'];
 				}
 				$session['current'] = \Environment::get('requestUri');
 				$this->Session->set('referer', $session);
@@ -1144,7 +1144,7 @@ abstract class DraftableDataContainer extends DataContainer
 		if($this->strAction != 'task' && $this->strAction != 'show' && Input::post('isAjaxRequest') == '')
 		{
 			$intState = !$this->isPublished() ? 2 : ($blnHasAccess ? 1 : 0);
-			\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][$intState] . '</p>');			
+			\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][$intState] . '</p>');
 		}
 
 		if($blnHasAccess || !$this->isPublished())
@@ -1159,7 +1159,7 @@ abstract class DraftableDataContainer extends DataContainer
 		// disable sorting by adding space so Contao can not detect it as sortable
 		if($this->isPublished() && $GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] == 'sorting')
 		{
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] = 'sorting ';			
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] = 'sorting ';
 		}
 	}
 
@@ -1174,7 +1174,7 @@ abstract class DraftableDataContainer extends DataContainer
 	{
 		if($this->blnIsPublished !== null)
 		{
-			return $this->blnIsPublished;			
+			return $this->blnIsPublished;
 		}
 		
 		if($this->blnDraftMode)
@@ -1189,7 +1189,7 @@ abstract class DraftableDataContainer extends DataContainer
 		}
 		else
 		{
-			$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . ' WHERE id=' . $this->intId;			
+			$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . ' WHERE id=' . $this->intId;
 		}
 		
 		$objResult = $this->Database->query($strQuery);
@@ -1230,12 +1230,12 @@ abstract class DraftableDataContainer extends DataContainer
 	{
 		$strModel = $this->strModel;
 		
-		// store access to root in session 
+		// store access to root in session
 		if(!$this->blnDraftMode)
 		{
 			if(!in_array($this->strAction, array(null, 'select', 'create')))
 			{
-				return true;				
+				return true;
 			}
 			
 			$arrPerm = $this->Session->get('draftPermission');
@@ -1255,11 +1255,11 @@ abstract class DraftableDataContainer extends DataContainer
 			
 			if(Input::get('redirect') == '1' && $this->objDraft !== null)
 			{
-				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&draft=1&redirect=2&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->id, REQUEST_TOKEN));	
+				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&draft=1&redirect=2&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->id, REQUEST_TOKEN));
 			}
 			elseif (Input::get('redirect') == 'task') 
 			{
-				$this->redirect(sprintf('contao/main.php?do=tasks&act=edit&id=%s&redirect=2&rt=%s', Input::get('taskid'), REQUEST_TOKEN));			
+				$this->redirect(sprintf('contao/main.php?do=tasks&act=edit&id=%s&redirect=2&rt=%s', Input::get('taskid'), REQUEST_TOKEN));
 			}
 			
 			return true;
@@ -1283,10 +1283,10 @@ abstract class DraftableDataContainer extends DataContainer
 			{
 				if(Input::get('redirect') == '2')
 				{
-					return false;					
+					return false;
 				}
 				
-				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=1&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->pid, REQUEST_TOKEN));				
+				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=1&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->pid, REQUEST_TOKEN));
 			}
 			
 			return true;
@@ -1307,7 +1307,7 @@ abstract class DraftableDataContainer extends DataContainer
 			{
 				$this->setState($objDraft, 'new');
 				$objDraft->tstamp = time();
-				$objDraft->save();		
+				$objDraft->save();
 			}
 		}
 		
@@ -1322,12 +1322,12 @@ abstract class DraftableDataContainer extends DataContainer
 		}
 		
 		$this->import($strClass);
-		$this->$strClass->checkPermission($objDc);			
+		$this->$strClass->checkPermission($objDc);
 		Input::setGet('id', $this->intId);
 		
 		if($intPid !== null)
 		{
-			Input::setGet('pid', $intPid);				
+			Input::setGet('pid', $intPid);
 		}
 		
 		return true;
@@ -1357,7 +1357,7 @@ abstract class DraftableDataContainer extends DataContainer
 		}
 		else
 		{
-			$objNew = clone $objCopy;			
+			$objNew = clone $objCopy;
 		}
 		
 		// versioning
@@ -1365,12 +1365,12 @@ abstract class DraftableDataContainer extends DataContainer
 		{
 			if(!$objNew instanceof VersioningModel)
 			{
-				$objNew = new VersioningModel($objNew);				
+				$objNew = new VersioningModel($objNew);
 			}
 		}
 		elseif($objNew instanceof VersioningModel)
 		{
-			$objNew = $objNew->getModel();			
+			$objNew = $objNew->getModel();
 		}
 		
 		// id and draft related
@@ -1379,7 +1379,7 @@ abstract class DraftableDataContainer extends DataContainer
 			if(!$blnNew)
 			{
 				$strId = $blnSwitchIds ? 'draftRelated' : 'id';
-				$objNew->id = $objReference->{$strId};				
+				$objNew->id = $objReference->{$strId};
 			}
 			else
 			{
@@ -1394,7 +1394,7 @@ abstract class DraftableDataContainer extends DataContainer
 		if($blnDraft)
 		{
 			$objNew->pid = $this->objDraft->id;
-			$objNew->ptable = 'tl_drafts';			
+			$objNew->ptable = 'tl_drafts';
 		}
 		elseif($objReference !== null) 
 		{
