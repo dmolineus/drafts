@@ -102,7 +102,9 @@ abstract class DraftableDataContainer extends DataContainer
 	/**
 	 * apply changes of draft to original
 	 * 
-	 * @param \Model
+	 * @param DC_Table 
+	 * @param \Model|null
+	 * @param bool
 	 */
 	public function applyDraft($objDc, $objModel = null, $blnDoNoRedirect=false)
 	{
@@ -134,9 +136,7 @@ abstract class DraftableDataContainer extends DataContainer
 		// create new original
 		elseif($this->hasState($objModel, 'new'))
 		{
-			$objNew = $this->prepareModel($objModel, false, $objModel, true, true);
-			$objNew->pid = $this->objDraft->pid;
-			$objNew->ptable = $this->objDraft->ptable;
+			$objNew = $this->prepareModel($objModel, false, true, true);
 			$objNew->save(true);
 			
 			$objModel->draftState = '';
@@ -152,7 +152,7 @@ abstract class DraftableDataContainer extends DataContainer
 			// apply changes 
 			if($this->hasState($objModel, 'modified'))
 			{
-				$objNew = $this->prepareModel($objModel, false, $objOriginal, false);
+				$objNew = $this->prepareModel($objModel, false);
 				$objNew->save();
 			}
 			
@@ -384,7 +384,7 @@ abstract class DraftableDataContainer extends DataContainer
 			$strModel = $this->strModel;
 			$objModel = $strModel::findByPK($insertID);
 			
-			$objNew = $this->prepareModel($objModel, true, $objModel, true, true);
+			$objNew = $this->prepareModel($objModel, true, true, true);
 			$objNew->save();
 			
 			$objModel->draftRelated = $objNew->id;
@@ -487,7 +487,7 @@ abstract class DraftableDataContainer extends DataContainer
 			}
 			
 			$objModel = new $this->strModel($objDc->activeRecord);
-		
+
 			// delete new elements
 			if($this->hasState($objModel, 'new'))
 			{
@@ -568,7 +568,7 @@ abstract class DraftableDataContainer extends DataContainer
 			if($objResult->numRows == 1 && $objResult->draftRelated > 0)
 			{
 				$strModel = $this->strModel;
-				$objModel = $this->prepareModel($strModel::findByPK($intId), true, $objResult);
+				$objModel = $this->prepareModel($strModel::findByPK($intId), true);
 				$objModel->save();
 			}
 		}
@@ -606,7 +606,7 @@ abstract class DraftableDataContainer extends DataContainer
 		{
 			if($objDc->activeRecord->draftRelated != null)
 			{
-				$objModel = $this->prepareModel($objDc->activeRecord, true, $objDc->activeRecord);
+				$objModel = $this->prepareModel($objDc->activeRecord, true);
 				$objModel->save();
 			}
 		}
@@ -637,6 +637,7 @@ abstract class DraftableDataContainer extends DataContainer
 			$objModel->invisible = $blnVisible;
 			$objModel->tstamp = time();
 			$objModel->save();
+			return $blnVisible;
 		}
 		
 		$strField = 'id';
@@ -697,7 +698,7 @@ abstract class DraftableDataContainer extends DataContainer
 		// modified draft, reset to original
 		if($this->hasState($objModel, 'modified')) 
 		{
-			$objNew = $this->prepareModel($objOriginal, true, $objModel, true);
+			$objNew = $this->prepareModel($objOriginal, true);
 			$objNew->save();
 		}
 		
@@ -1053,6 +1054,8 @@ abstract class DraftableDataContainer extends DataContainer
 					$this->objDraft = new DraftsModel($objResult);
 				}
 			}
+			
+			return;
 		}
 		
 		// create draft
@@ -1072,7 +1075,7 @@ abstract class DraftableDataContainer extends DataContainer
 				{
 					$objModel = new $this->strModel($objResult);
 					
-					$objNew = $this->prepareModel($objModel, true, $objModel);
+					$objNew = $this->prepareModel($objModel, true);
 					$objNew->save(true);
 					
 					$objModel->draftRelated = $objNew->id;
@@ -1219,66 +1222,87 @@ abstract class DraftableDataContainer extends DataContainer
 	{
 		$strModel = $this->strModel;
 		
-		// store access to root in session
+		// Live mode
+		
+		// permission is already granted by default dca checkPermission 
+		// Prepare permission checking for draft mode
 		if(!$this->blnDraftMode)
 		{
-			if(!in_array($this->strAction, array(null, 'select', 'create')))
+			if(!in_array($this->strAction, array(null, 'select', 'create', 'toggle')))
 			{
 				return true;
 			}
 			
 			$arrPerm = $this->Session->get('draftPermission');
-			
-			if($arrPerm === null || !is_array($arrPerm))
+			if($arrPerm[Input::get('do')][$this->objDraft->ptable] === null || !is_array($arrPerm[Input::get('do')][$this->objDraft->ptable]))
 			{
-				$arrPerm = array();
+				$arrPerm[Input::get('do')][$this->objDraft->ptable] = array();
 			}
-			if($arrPerm[$this->objDraft->ptable] === null || !is_array($arrPerm[$this->objDraft->ptable]))
-			{
-				$arrPerm[$this->objDraft->ptable] = array();
-			}
-			
-			// store permission in session so draft mode can access it
-			$arrPerm[$this->objDraft->ptable][$this->objDraft->pid] = true;
+
+			$arrPerm[Input::get('do')][$this->objDraft->ptable][$this->objDraft->pid] = true;
 			$this->Session->set('draftPermission', $arrPerm);
 			
+			// redirect back to draft mode
 			if(Input::get('redirect') == '1' && $this->objDraft !== null)
-			{
-				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&draft=1&redirect=2&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->id, REQUEST_TOKEN));
+			{				
+				if(Input::get('ttid'))
+				{
+					$tid = '&tid=' . Input::get('ttid');
+					$intId = Input::get('ttid');
+				}
+				else
+				{
+					$tid = '';
+					$intId = $this->objDraft->id;
+				}
+				
+				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&draft=1&redirect=2%s&rt=%s', Input::get('do'), $this->strTable, $intId, $tid, REQUEST_TOKEN));
 			}
+			
+			// redirect back to task module
 			elseif (Input::get('redirect') == 'task') 
 			{
 				$this->redirect(sprintf('contao/main.php?do=tasks&act=edit&id=%s&redirect=2&rt=%s', Input::get('taskid'), REQUEST_TOKEN));
 			}
 			
 			return true;
-		}
+		}		
 		
-		$strClass = $arrAttributes['class'];
+		// Draft Mode 
 		
-		// only check draft mode, if no key attribute is given
-		if(Input::get('key') != '')
+		// only check if no key attribute is given, key checking is rule based
+		// access is stored in session, so check it first
+		$arrPerm = $this->Session->get('draftPermission');
+		if(Input::get('key') != '' || isset($arrPerm[Input::get('do')][$this->objDraft->ptable][$this->objDraft->pid]))
 		{
 			return true;
 		}
 		
 		// check access to root
-		if(in_array($this->strAction, array(null, 'select', 'create')) || $this->strAction == 'paste' && Input::get('mode') == 'create')
+		if(in_array($this->strAction, array(null, 'select', 'create', 'toggle')) || $this->strAction == 'paste' && Input::get('mode') == 'create')
 		{
-			$arrPerm = $this->Session->get('draftPermission');
-			
-			// redirect to live view to check permission, use redirect param to avoid recursively redirects
-			if(!isset($arrPerm[$this->objDraft->ptable][$this->objDraft->pid]))
+			if(Input::get('redirect') == '2')
 			{
-				if(Input::get('redirect') == '2')
-				{
-					return false;
-				}
-				
-				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=1&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->pid, REQUEST_TOKEN));
+				return false;
 			}
 			
-			return true;
+			// passby toggling id
+			$tid = '';
+			if(Input::get('tid'))
+			{
+				$objModel = $strModel::findOneBy('draftRelated', Input::get('tid'));
+				
+				if($objModel !== null)
+				{
+					$tid = '&ttid=' . Input::get('tid');					
+				}
+				else 
+				{
+					return true;
+				}
+			}
+				
+			$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=1%s&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->pid, $tid, REQUEST_TOKEN));			
 		}
 
 		// check permission for child element
@@ -1297,19 +1321,40 @@ abstract class DraftableDataContainer extends DataContainer
 				$this->setState($objDraft, 'new');
 				$objDraft->tstamp = time();
 				$objDraft->save();
+				return true;
 			}
+			
+			return false;
 		}
 		
 		// fake ids to run original check permission method
 		Input::setGet('id', $objModel->id);
 		$intPid = Input::get('pid');
+
 		
 		if($intPid !== null)
 		{
-			$objModel = $strModel::findOneBy('draftRelated', $intPid);
-			Input::setGet('pid', $objModel->id);
+			if(Input::get('mode') == '2')
+			{
+				Input::setGet('pid', $this->objDraft->pid);
+			}
+			else 
+			{
+				$objModel = $strModel::findOneBy('draftRelated', $intPid);
+				
+				if($objModel !== null)
+				{
+					Input::setGet('pid', $objModel->id);					
+				}
+				// pid is new element so grant access
+				else
+				{
+					return true;
+				}
+			}
 		}
-		
+
+		$strClass = $arrAttributes['class'];
 		$this->import($strClass);
 		$this->$strClass->checkPermission($objDc);
 		Input::setGet('id', $this->intId);
@@ -1324,16 +1369,15 @@ abstract class DraftableDataContainer extends DataContainer
 
 
 	/**
-	 * creates a new model by cloning a reference and replace
+	 * create a new model by cloning a reference and replace
 	 * 
 	 * @param \Model|array model or result array
 	 * @param bool true if new model is a draft
-	 * @param \Model|null
 	 * @param bool switch id and draftRelated
 	 * @param bool true if forcing a new model 
 	 * @param bool true is versioning shall be used
 	 */
-	protected function prepareModel($objCopy, $blnDraft=false, $objReference=null, $blnSwitchIds=true, $blnNew=false, $blnVersioning=true)
+	protected function prepareModel($objCopy, $blnDraft=false, $blnSwitchIds=true, $blnNew=false, $blnVersioning=true)
 	{
 		if(is_array($objCopy))
 		{
@@ -1363,20 +1407,14 @@ abstract class DraftableDataContainer extends DataContainer
 		}
 		
 		// id and draft related
-		if($objReference !== null)
+		if($blnSwitchIds)
 		{
-			if(!$blnNew)
-			{
-				$strId = $blnSwitchIds ? 'draftRelated' : 'id';
-				$objNew->id = $objReference->{$strId};
-			}
-			else
-			{
-				$objNew->id = null;
-			}
-			
-			$strId = $blnSwitchIds ? 'id' : 'draftRelated';
-			$objNew->draftRelated = $objReference->{$strId};
+			$objNew->id = $blnNew ? null : $objCopy->draftRelated;
+			$objNew->draftRelated = $objCopy->id;
+		}
+		elseif($blnNew)
+		{
+			$objNew->id = null;
 		}
 		
 		// pid and ptable
@@ -1385,15 +1423,16 @@ abstract class DraftableDataContainer extends DataContainer
 			$objNew->pid = $this->objDraft->id;
 			$objNew->ptable = 'tl_drafts';
 		}
-		elseif($objReference !== null) 
+		else
 		{
-			$objNew->pid = $objReference->pid;
-			$objNew->ptable = $objReference->ptable;
+			$objNew->pid = $this->objDraft->pid;
+			$objNew->ptable = $this->objDraft->ptable;
 		}
 		
+		// empty draft state
 		if(!$blnDraft)
 		{
-			$this->draftState = '';
+			$objNew->draftState = '';
 		}
 		
 		$objNew->tstamp = time();
@@ -1413,7 +1452,9 @@ abstract class DraftableDataContainer extends DataContainer
 		if($this->hasState($objModel, $strState))
 		{
 			$intPos = array_search($strState, $objModel->draftState);
-			unset($objModel->draftState[$intPos]);
+			$arrState = $objModel->draftState;
+			unset($arrState[$intPos]);			
+			$objModel->draftState = $arrState;
 			return true;
 		}
 		
