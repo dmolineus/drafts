@@ -1,4 +1,11 @@
 
+/**
+ * adds label to content element
+ *  
+ * @param {Object} objElement
+ * @param string strClass
+ * @param string strLabel
+ */
 function toggleDraftLabel(objElement, strClass, strLabel)
 {
 	var objParent = objElement.getParent('.tl_content').getElement('.cte_type');
@@ -15,6 +22,10 @@ function toggleDraftLabel(objElement, strClass, strLabel)
 	return false;
 }
 
+
+/**
+ * get url vars of iframe
+ */
 function getUrlVars() {
     var vars = {};
     var parts = window.frames[0].location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
@@ -23,7 +34,16 @@ function getUrlVars() {
     return vars;
 }
 
-function addSubmitButton(text)
+
+/**
+ * prepares the simple modal by adding the submit button
+ * button will check if it can be closed by checking reload patextram
+ * trick inspired of may17BackendTools
+ * 
+ * @param string button label
+ * @return false
+ */
+function addSubmitButton(label)
 {
 	modal = $('simple-modal');
 	
@@ -31,7 +51,7 @@ function addSubmitButton(text)
 	modal.getElement('.simple-modal-footer .btn').addClass('cancel');
 	
 	button = new Element('a');
-	button.set('text', text);
+	button.set('text', label);
 	button.set('class', 'btn primary');
 	
 	button.addEvent('click', function() {
@@ -49,6 +69,9 @@ function addSubmitButton(text)
 	return false;
 }
 
+/**
+ * destroy submit container of task view in popup
+ */
 window.addEvent('domready', function() {
 	$$('.popup.task .tl_submit_container').destroy();
 });
