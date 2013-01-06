@@ -13,7 +13,6 @@
  **/
  
 namespace Netzmacht\Drafts\DataContainer;
-use Netzmacht\Utils\DataContainer;
 
 
 /**
@@ -21,6 +20,12 @@ use Netzmacht\Utils\DataContainer;
  */
 class Content extends DraftableDataContainer
 {
+	
+	/**
+	 * @var array 
+	 */
+	protected $arrContentElements = null;
+	
 	
 	/**
 	 * provide a generateChildRecord callback
@@ -85,4 +90,93 @@ class Content extends DraftableDataContainer
 		);
 	}
 
+
+	/**
+	 * generate preview element of content element
+	 * Thanks to rms for this great idea and solution
+	 * HOOK: getContentElement
+	 * 
+	 * @see ReleaseManagementSystem rms
+	 * @param Database\Result
+	 * @param string
+	 * @return string
+	 */
+	public function previewContentElement($objElement, $strBuffer)
+	{
+		// only render on preview
+		if(\Input::get('do') != 'preview')
+		{
+			return $strBuffer;
+		}
+		
+		$strBuffer = '';
+		
+		// get all content elements from database
+		if($this->arrContentElements === null)
+		{
+			$this->arrContentElements = array();
+		
+			$this->import('Database');
+			$this->objDraft = \DraftsModel::findOneByPidAndTable($objElement->pid, $objElement->ptable);
+			
+			$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? ORDER BY sorting')
+										->execute($this->objDraft->id, 'tl_drafts');
+			
+			while($objResult->next())
+			{
+				$this->arrContentElements[$objResult->id]['model'] = new \ContentModel($objResult);
+				$this->arrContentElements[$objResult->id]['generated'] = false;
+			}
+		}
+		
+		// current element is first, everything
+		$objFirst = reset($this->arrContentElements);
+
+		if($objFirst->draftRelated == $objElement->id)
+		{
+			$strBuffer .= $this->generateContentElement($objElement);
+			return $strBuffer;
+		}
+		
+		// generate all content elements until current is found
+		while(list($intId, $arrElement) = each($this->arrContentElements))
+		{
+			if(!$arrElement['generated'])
+			{
+				var_dump($intId);
+				$strBuffer .= $this->generateContentElement($arrElement['model']);
+				unset($this->arrContentElements[$intId]);
+			}
+			elseif($intId == $objElement->draftRelated)
+			{
+				break;
+			}
+		}
+		
+		return $strBuffer;
+	}
+
+
+	/**
+	 * generate a single content element
+	 * 
+	 * @param Model
+	 * @return string
+	 */
+	protected function generateContentElement($objModel)
+	{
+		$this->arrContentElements[$objModel->id]['generated'] = true;
+		$arrState = unserialize($objModel->draftState);
+		
+		// element is marked as deleted, so do not generate
+		if(is_array($arrState) && in_array('delete', $arrState))
+		{
+			return;			
+		}
+
+		$strClass = $this->findContentElement($objModel->type);
+		$objElement = new $strClass($objModel);
+				
+	    return $objElement->generate();
+	}
 }

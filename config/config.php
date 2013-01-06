@@ -28,6 +28,11 @@ foreach ($GLOBALS['TL_CONFIG']['draftModules'] as $strModule)
 	$GLOBALS['BE_MOD']['content'][$strModule]['stylesheet'] = 'system/modules/drafts/assets/style.css';
 }
 
+if(!empty($GLOBALS['TL_CONFIG']['draftModules']) && TL_MODE == 'FE')
+{
+	$GLOBALS['TL_HOOKS']['getContentElement'][] = array('Netzmacht\Drafts\DataContainer\Content', 'previewContentElement');;
+}
+
 // store drafts information, needed for ModuleTasks
 $GLOBALS['TL_DRAFTS']['tl_calendar_events']['module'] 	= 'calendar';
 $GLOBALS['TL_DRAFTS']['tl_calendar_events']['ctable'] 	= 'tl_content';
