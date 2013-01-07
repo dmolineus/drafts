@@ -20,6 +20,7 @@ use Netzmacht\Utils\DataContainer,
 	DC_Table,
 	Contao\Database\Mysql\Result;
 
+
 // initialize draft modules
 $GLOBALS['TL_CONFIG']['draftModules'] = unserialize($GLOBALS['TL_CONFIG']['draftModules']);
 
@@ -428,7 +429,6 @@ abstract class DraftableDataContainer extends DataContainer
 			'button_callback' 	=> array($strClass, 'generateGlobalButtonTask'),
 			'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate'),
 		);
-		
 		
 		// DRAFT MODE SETTINGS		
 		if($this->blnDraftMode)
