@@ -12,6 +12,8 @@
  *  
  **/
  
+namespace Netzmacht\Drafts\DataContainer;
+
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] .= ';{drafts_legend},draftModules,draftsUseTaskModule';
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['draftModules'] = array
@@ -20,6 +22,7 @@ $GLOBALS['TL_DCA']['tl_settings']['fields']['draftModules'] = array
 	'inputType'		=> 'checkbox',
 	'options'		=> &$GLOBALS['TL_CONFIG']['draftModulesOptions'],
 	'reference'		=> &$GLOBALS['TL_LANG']['MOD'],
+	
 	'eval'			=> array('multiple' => true),
 );
 

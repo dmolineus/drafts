@@ -28,9 +28,14 @@ foreach ($GLOBALS['TL_CONFIG']['draftModules'] as $strModule)
 	$GLOBALS['BE_MOD']['content'][$strModule]['stylesheet'] = 'system/modules/drafts/assets/style.css';
 }
 
-if(!empty($GLOBALS['TL_CONFIG']['draftModules']) && TL_MODE == 'FE')
+if(!empty($GLOBALS['TL_CONFIG']['draftModules']))
 {
-	$GLOBALS['TL_HOOKS']['getContentElement'][] = array('Netzmacht\Drafts\DataContainer\Content', 'previewContentElement');;
+	if(TL_MODE == 'FE')
+	{
+		$GLOBALS['TL_HOOKS']['getContentElement'][] = array('Netzmacht\Drafts\DataContainer\Content', 'previewContentElement');		
+	}
+	
+	$GLOBALS['TL_HOOKS']['loadDataContainer'][] = array('Netzmacht\Drafts\DataContainer\Content', 'initializeDataContainer');
 }
 
 // font awesome
