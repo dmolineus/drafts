@@ -45,15 +45,14 @@ class ModuleTasks extends Contao\ModuleTasks
 			}
 			
 			$arrPerm = $this->Session->get('draftPermission');
-			$arrConfig = $GLOBALS['TL_DRAFTS'][$objDraft->ptable];
 
-			if(isset($arrPerm[$GLOBALS['TL_DRAFTS'][$objDraft->ptable]['module']][$objDraft->ptable][$objDraft->pid]))
+			if(isset($arrPerm[$objDraft->module][$objDraft->ptable][$objDraft->pid]))
 			{
 				return true;
 			}
 			elseif(\Input::get('redirect') != '2')
 			{				
-				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=task&taskid=%s&rt=%s', $arrConfig['module'], $arrConfig['ctable'], $objDraft->pid, $objTask->id, REQUEST_TOKEN));
+				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=task&taskid=%s&rt=%s', $objDraft->module, $objDraft->ctable, $objDraft->pid, $objTask->id, REQUEST_TOKEN));
 			}
 		}
 		elseif($this->User->isAdmin || $this->User->id == $objTask->createdBy)
