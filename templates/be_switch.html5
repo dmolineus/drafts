@@ -53,9 +53,12 @@
   <option value="show"<?php if ($this->show) echo ' selected="selected"'; ?>><?php echo $this->lblShow; ?></option>
 </select> 
 <?php
-$objWidget = new Netzmacht\Drafts\Widget\PreviewSwitch();
-echo $objWidget->generateLabel() . ' ';
-echo $objWidget->generate();
+if(!empty($GLOBALS['TL_CONFIG']['draftModules']))
+{
+	$objWidget = new Netzmacht\Drafts\Widget\PreviewSwitch();
+	echo $objWidget->generateLabel() . ' ';
+	echo $objWidget->generate();	
+}
 ?>
 <input type="submit" class="tl_submit" value="<?php echo $this->apply; ?>"> 
 <input type="button" class="tl_submit" value="<?php echo $this->reload; ?>" onclick="parent.frames[1].location.reload()"> 
