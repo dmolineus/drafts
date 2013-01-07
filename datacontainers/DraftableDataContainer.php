@@ -487,7 +487,14 @@ abstract class DraftableDataContainer extends DataContainer
 		// LIVE MODE SETTINGS
 		else
 		{
-			$arrRules = array('hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]:ptable:alexf=published');
+			$arrRules = array('hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]:ptable:alexf=published');			
+			
+			// close table if user has no access to insert new content element
+			if(!$this->User->hasAccess($this->strTable . '::published', 'alexf'))
+			{
+				$GLOBALS['TL_DCA'][$this->strTable]['config']['closed'] = true;
+				$GLOBALS['TL_DCA'][$this->strTable]['config']['notEditable'] = true;
+			}
 		}
 		
 		// PERMISSION RULES 
@@ -918,33 +925,6 @@ abstract class DraftableDataContainer extends DataContainer
 
 
 	/**
-	 * add draft id to url or hide button
-	 *
-	 * @param string the button name 
-	 * @param string href
-	 * @param string label
-	 * @param string title
-	 * @param string icon class
-	 * @param string added attributes
-	 * @param array option data row of operation buttons
-	 * @return bool true
-	 */
-	protected function buttonRuleTaskButton(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
-	{
-		if($this->objDraft === null || !in_array('tasks', $this->Config->getActiveModules()) || !$GLOBALS['TL_CONFIG']['draftsUseTaskModule'])
-		{
-			return false;
-		}
-		
-		$arrAttributes['plain'] = true;
-		$arrAttributes['__set__'][] = 'plain';
-
-		$strHref = 'system/modules/drafts/task.php?id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN;
-		return true;
-	}
-
-
-	/**
 	 * decide which buttons can be displays depending on draft state
 	 *
 	 * @param string the button name 
@@ -1028,6 +1008,33 @@ abstract class DraftableDataContainer extends DataContainer
 		}
 
 		$strHref .= '&table=' . $this->strTable . '&id=' . $this->objDraft->pid;
+		return true;
+	}
+	
+
+	/**
+	 * add draft id to url or hide button
+	 *
+	 * @param string the button name 
+	 * @param string href
+	 * @param string label
+	 * @param string title
+	 * @param string icon class
+	 * @param string added attributes
+	 * @param array option data row of operation buttons
+	 * @return bool true
+	 */
+	protected function buttonRuleTaskButton(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
+	{
+		if($this->objDraft === null || !in_array('tasks', $this->Config->getActiveModules()) || !$GLOBALS['TL_CONFIG']['draftsUseTaskModule'])
+		{
+			return false;
+		}
+		
+		$arrAttributes['plain'] = true;
+		$arrAttributes['__set__'][] = 'plain';
+
+		$strHref = 'system/modules/drafts/task.php?id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN;
 		return true;
 	}
 	
@@ -1193,49 +1200,37 @@ abstract class DraftableDataContainer extends DataContainer
 	 */
 	protected function initializeModes()
 	{
-		// set session data for draft mode
 		if($this->blnDraftMode)
 		{
+			// set session data for draft mode
 			if($this->strAction == null)
 			{
-				// set session data
-				$this->import('Session');
 				$session = $this->Session->get('referer');
+				$session['current'] = \Environment::get('requestUri');
 				
 				if(\Environment::get('requestUri') != $session['current'])
 				{
 					$session['last'] = $session['current'];
 				}
-				$session['current'] = \Environment::get('requestUri');
+				
 				$this->Session->set('referer', $session);
 			}
-
-			return;
 		}
-		
-		$arrAttributes['ptable'] = true;
-		$arrAttributes['alexf'] = 'published';
-		$blnHasAccess = $this->genericHasAccess($arrAttributes);
-		
-		if($this->strAction != 'task' && $this->strAction != 'show' && Input::post('isAjaxRequest') == '')
+		else
 		{
-			$intState = !$this->isPublished() ? 2 : ($blnHasAccess ? 1 : 0);
-			\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][$intState] . '</p>');
-		}
-
-		if($blnHasAccess || !$this->isPublished())
-		{
-			return;
-		}
+			$blnHasAccess = $this->User->hasAccess($this->strTable . '::published', 'alexf');
 		
-		// close table if user has no access to insert new content element
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['closed'] = true;
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['notEditable'] = true;
-	
-		// disable sorting by adding space so Contao can not detect it as sortable
-		if($this->isPublished() && $GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] == 'sorting')
-		{
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] = 'sorting ';
+			if($this->strAction != 'show' && Input::post('isAjaxRequest') == '')
+			{
+				$intState = !$this->isPublished() ? 2 : ($blnHasAccess ? 1 : 0);
+				\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][$intState] . '</p>');
+			}
+			
+			// disable sorting by adding space so Contao can not detect it as sortable
+			if(!$blnHasAccess && $this->isPublished() && $GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] == 'sorting')
+			{
+				$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] = 'sorting ';
+			}			
 		}
 	}
 
@@ -1478,14 +1473,11 @@ abstract class DraftableDataContainer extends DataContainer
 		}
 		
 		// versioning
-		if($blnVersioning)
+		if($blnVersioning && !$objNew instanceof VersioningModel)
 		{
-			if(!$objNew instanceof VersioningModel)
-			{
 				$objNew = new VersioningModel($objNew);
-			}
 		}
-		elseif($objNew instanceof VersioningModel)
+		elseif(!$blnVersioning && $objNew instanceof VersioningModel)
 		{
 			$objNew = $objNew->getModel();
 		}
