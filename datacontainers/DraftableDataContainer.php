@@ -899,6 +899,25 @@ abstract class DraftableDataContainer extends DataContainer
 
 
 	/**
+	 * button true if no alias exists, used as rule for disabling icon
+	 *
+	 * @param string the button name 
+	 * @param string href
+	 * @param string label
+	 * @param string title
+	 * @param string icon class
+	 * @param string added attributes
+	 * @param array option data row of operation buttons
+	 * @return bool true
+	 */
+	protected function buttonRuleAliasElement(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
+	{
+		$objElement = $this->Database->prepare("SELECT id FROM tl_content WHERE cteAlias=? AND type='alias'")->limit(1)->execute($arrRow['id']);		
+		return $objElement->numRows < 1;		
+	}
+
+
+	/**
 	 * add draft id to url or hide button
 	 *
 	 * @param string the button name 

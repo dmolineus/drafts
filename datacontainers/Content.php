@@ -104,7 +104,7 @@ class Content extends DraftableDataContainer
 		{
 			return false;
 		}
-		
+
 		$strClass = get_class($this);
 		
 		if($this->blnDraftMode)
@@ -133,7 +133,7 @@ class Content extends DraftableDataContainer
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['copy']['button_callback'] 	= array($strClass, 'generateButtonCopy');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['copy']['button_rules']		= array('hasAccessOnPublished', 'generate');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['delete']['button_callback'] 	= array($strClass, 'generateButtonDelete');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['delete']['button_rules']		= array('hasAccessOnPublished', 'generate');
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['delete']['button_rules']		= array('hasAccessOnPublished', 'disableIcon:rule=aliasElement', 'generate');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_callback'] 	= array($strClass, 'generateButtonToggle');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_rules']		= array('hasAccessOnPublished:icon=invisible.gif', 'toggleIcon:field=invisible:inverted', 'generate');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['cut']['button_callback'] 	= array($strClass, 'generateButtonCut');
