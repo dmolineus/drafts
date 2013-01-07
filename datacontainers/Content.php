@@ -24,7 +24,7 @@ class Content extends DraftableDataContainer
 	/**
 	 * @var array 
 	 */
-	protected $arrContentElements = null;
+	protected static $arrContentElements = null;
 	
 	
 	/**
@@ -157,7 +157,7 @@ class Content extends DraftableDataContainer
 	public function previewContentElement($objElement, $strBuffer)
 	{
 		// only render on preview
-		if(\Input::get('draft') != '1' && \Input::cookie('DRAFT_MODE') != '1')
+		if(\Input::cookie('DRAFT_MODE') != '1')
 		{
 			return $strBuffer;
 		}
@@ -165,9 +165,9 @@ class Content extends DraftableDataContainer
 		$strBuffer = '';
 		
 		// get all draft elements from database
-		if($this->arrContentElements === null)
+		if(static::$arrContentElements === null)
 		{
-			$this->arrContentElements = array();
+			static::$arrContentElements = array();
 		
 			$this->import('Database');
 			$this->objDraft = \DraftsModel::findOneByPidAndTable($objElement->pid, $objElement->ptable);
@@ -177,13 +177,16 @@ class Content extends DraftableDataContainer
 			
 			while($objResult->next())
 			{
-				$this->arrContentElements[$objResult->id]['model'] = new \ContentModel($objResult);
-				$this->arrContentElements[$objResult->id]['generated'] = false;
+				static::$arrContentElements[$objResult->id]['model'] = new \ContentModel($objResult);
+				static::$arrContentElements[$objResult->id]['generated'] = false;
+				
+				$arrState = unserialize(static::$arrContentElements[$objResult->id]['model']->draftState);
+				static::$arrContentElements[$objResult->id]['new'] = is_array($arrState) && in_array('new', $arrState);
 			}
 		}
 		
 		// current element is first, everything
-		$objFirst = reset($this->arrContentElements);
+		$objFirst = reset(static::$arrContentElements);
 
 		if($objFirst->draftRelated == $objElement->id)
 		{
@@ -192,16 +195,30 @@ class Content extends DraftableDataContainer
 		}
 		
 		// generate all content elements until current is found, required to display new elements
-		while(list($intId, $arrElement) = each($this->arrContentElements))
+		while(list($intId, $arrElement) = each(static::$arrContentElements))
 		{
-			if(!$arrElement['generated'])
-			{
-				$strBuffer .= $this->generateContentElement($arrElement['model']);
-				unset($this->arrContentElements[$intId]);
-			}
-			if($intId == $objElement->draftRelated)
+			if($blnBreak && !$arrElement['new'])
 			{
 				break;
+			}
+			
+			// call getContentElement so that getContentElement Hooks are called
+			if($arrElement['new'])
+			{
+				// set new to false so that there won't be recursively calls
+				static::$arrContentElements[$intId]['new'] = false;
+				$strBuffer .= $this->getContentElement($intId);				
+			}
+			elseif(!$arrElement['generated'])
+			{
+				$strBuffer .= $this->generateContentElement($arrElement['model']);
+			}
+			
+			unset(static::$arrContentElements[$intId]);
+			
+			if($intId == $objElement->draftRelated)
+			{
+				$blnBreak = true;
 			}
 		}
 		
@@ -217,7 +234,7 @@ class Content extends DraftableDataContainer
 	 */
 	protected function generateContentElement($objModel)
 	{
-		$this->arrContentElements[$objModel->id]['generated'] = true;
+		static::$arrContentElements[$objModel->id]['generated'] = true;
 		$arrState = unserialize($objModel->draftState);
 		
 		// element is marked as deleted, so do not generate
