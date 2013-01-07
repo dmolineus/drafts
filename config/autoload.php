@@ -24,12 +24,16 @@ ClassLoader::addClasses(array
 	'Netzmacht\Drafts\Model\VersioningModel' 				=> 'system/modules/drafts/models/VersioningModel.php',
 	
 	// modules
-	'Netzmacht\Drafts\Module\ModuleDrafts' 					=> 'system/modules/drafts/modules/ModuleDrafts.php',
 	'ModuleTasks' 											=> 'system/modules/drafts/modules/ModuleTasks.php',
+	
+	// widgets
+	'Netzmacht\Drafts\Widget\PreviewSwitch'					=> 'system/modules/drafts/widgets/PreviewSwitch.php',
+	
 ));
 
 TemplateLoader::addFiles(array 
 (
-	'be_drafts_diff'	=> 'system/modules/drafts/templates/',
-	'be_drafts_task'	=> 'system/modules/drafts/templates/',
+	'be_drafts_diff'										=> 'system/modules/drafts/templates/',
+	'be_drafts_task'										=> 'system/modules/drafts/templates/',
+	'be_switch'												=> 'system/modules/drafts/templates/',
 ));

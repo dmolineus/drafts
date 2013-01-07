@@ -104,14 +104,14 @@ class Content extends DraftableDataContainer
 	public function previewContentElement($objElement, $strBuffer)
 	{
 		// only render on preview
-		if(\Input::get('do') != 'preview')
+		if(\Input::get('draft') != '1' && \Input::cookie('DRAFT_MODE') != '1')
 		{
 			return $strBuffer;
 		}
 		
 		$strBuffer = '';
 		
-		// get all content elements from database
+		// get all draft elements from database
 		if($this->arrContentElements === null)
 		{
 			$this->arrContentElements = array();
@@ -138,16 +138,15 @@ class Content extends DraftableDataContainer
 			return $strBuffer;
 		}
 		
-		// generate all content elements until current is found
+		// generate all content elements until current is found, required to display new elements
 		while(list($intId, $arrElement) = each($this->arrContentElements))
 		{
 			if(!$arrElement['generated'])
 			{
-				var_dump($intId);
 				$strBuffer .= $this->generateContentElement($arrElement['model']);
 				unset($this->arrContentElements[$intId]);
 			}
-			elseif($intId == $objElement->draftRelated)
+			if($intId == $objElement->draftRelated)
 			{
 				break;
 			}
