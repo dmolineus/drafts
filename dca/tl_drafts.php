@@ -53,6 +53,14 @@ $GLOBALS['TL_DCA']['tl_drafts'] = array
 		(
 			'sql'						=> "varchar(64) NOT NULL default ''"
 		),
+		'ctable' => array
+		(
+			'sql'						=> "varchar(64) NOT NULL default ''"
+		),
+		'module' => array
+		(
+			'sql'						=> "varchar(64) NOT NULL default ''"
+		),
 		'taskid' => array
 		(
 			'sql'						=> "int(10) unsigned NOT NULL default '0'"

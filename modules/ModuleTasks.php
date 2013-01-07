@@ -47,7 +47,7 @@ class ModuleTasks extends Contao\ModuleTasks
 			$arrPerm = $this->Session->get('draftPermission');
 			$arrConfig = $GLOBALS['TL_DRAFTS'][$objDraft->ptable];
 
-			if(isset($arrPerm[Input::get('do')][$objDraft->ptable][$objDraft->pid]))
+			if(isset($arrPerm[$GLOBALS['TL_DRAFTS'][$objDraft->ptable]['module']][$objDraft->ptable][$objDraft->pid]))
 			{
 				return true;
 			}

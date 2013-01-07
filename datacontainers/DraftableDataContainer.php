@@ -1067,6 +1067,8 @@ abstract class DraftableDataContainer extends DataContainer
 				$this->objDraft->pid = $this->intId;
 				$this->objDraft->ptable = $GLOBALS['TL_DCA'][$this->strTable]['config']['dtable'];
 				$this->objDraft->tstamp = time();
+				$this->objDraft->ctable = $this->strTable;
+				$this->objDraft->module = Input::get('do');
 				$this->objDraft->save();
 
 				$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=?')->execute($this->objDraft->pid, $this->objDraft->ptable);

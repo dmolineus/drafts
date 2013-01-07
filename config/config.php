@@ -33,19 +33,6 @@ if(!empty($GLOBALS['TL_CONFIG']['draftModules']) && TL_MODE == 'FE')
 	$GLOBALS['TL_HOOKS']['getContentElement'][] = array('Netzmacht\Drafts\DataContainer\Content', 'previewContentElement');;
 }
 
-// store drafts information, needed for ModuleTasks
-$GLOBALS['TL_DRAFTS']['tl_calendar_events']['module'] 	= 'calendar';
-$GLOBALS['TL_DRAFTS']['tl_calendar_events']['ctable'] 	= 'tl_content';
-$GLOBALS['TL_DRAFTS']['tl_calendar_events']['title']	= 'title';
-
-$GLOBALS['TL_DRAFTS']['tl_article']['module'] 			= 'article';
-$GLOBALS['TL_DRAFTS']['tl_article']['ctable'] 			= 'tl_content';
-$GLOBALS['TL_DRAFTS']['tl_article']['title']			= 'title';
-
-$GLOBALS['TL_DRAFTS']['tl_news']['module'] 				= 'news';
-$GLOBALS['TL_DRAFTS']['tl_news']['ctable'] 				= 'tl_content';
-$GLOBALS['TL_DRAFTS']['tl_news']['title']				= 'headline';
-
 // font awesome
 $GLOBALS['ICON_REPLACER']['buttons']['styleIcons'][] = array('edit', 'header_draft');
 $GLOBALS['ICON_REPLACER']['buttons']['styleIcons'][] = array('check', 'header_live');

@@ -40,12 +40,12 @@ class TaskController extends Backend
 	 */
 	public function __construct()
 	{
-		$this->import('Database');
 		$this->import('BackendUser', 'User');
 		parent::__construct();
 
-		$this->User->authenticate();
-		
+		$this->User->authenticate();		
+		$this->import('Database');
+			
 		$this->loadLanguageFile('default');
 		$this->loadLanguageFile('tl_drafts');
 		$this->loadLanguageFile('modules');
@@ -79,9 +79,9 @@ class TaskController extends Backend
 			
 			$objResult = $this->Database->query('SELECT * FROM ' . $objDraft->ptable . ' WHERE id=' . $objDraft->pid);
 			
-			$strField = $GLOBALS['TL_DRAFTS'][$objDraft->ptable]['title'];
+			$strField = $objResult->title === null ? ($objResult->headline === null ? '' : $objResult->headline) : $objResult->title;
 			$strTitle = sprintf($GLOBALS['TL_LANG']['tl_drafts']['draftTaskTitle'],
-				$GLOBALS['TL_LANG']['MOD'][$GLOBALS['TL_DRAFTS'][$objDraft->ptable]['module']][0],
+				$GLOBALS['TL_LANG']['MOD'][$objDraft->module][0],
 				$objDraft->pid,
 				$objResult->$strField != '' ? $objResult->$strField : $GLOBALS['TL_LANG']['tl_drafts']['draftTaskNoTitle']
 			); 

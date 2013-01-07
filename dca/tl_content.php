@@ -113,8 +113,3 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['draftState'] = array
 (
 	'sql' 						=> "varchar(255) NOT NULL default ''",
 );
-
-$GLOBALS['TL_DCA']['tl_content']['fields']['draftDelete'] = array
-(
-	'sql' 						=> "char(1) NOT NULL default ''",
-);
