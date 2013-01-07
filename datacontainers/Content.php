@@ -24,7 +24,7 @@ class Content extends DraftableDataContainer
 	/**
 	 * @var array 
 	 */
-	protected static $arrContentElements = null;
+	protected static $arrContentElements = array();
 	
 	
 	/**
@@ -157,45 +157,42 @@ class Content extends DraftableDataContainer
 	public function previewContentElement($objElement, $strBuffer)
 	{
 		// only render on preview
-		if(\Input::cookie('DRAFT_MODE') != '1')
+		if(\Input::cookie('DRAFT_MODE') != '1' || $objElement->ptable == 'tl_drafts')
 		{
+			if($objElement->ptable == 'tl_drafts')
+			{
+				unset(static::$arrContentElements[$objElement->pid][$objElement->id]);
+			}
 			return $strBuffer;
 		}
+		
+		$objDraft = \DraftsModel::findOneByPidAndTable($objElement->pid, $objElement->ptable);		
+		$pid = $objDraft->id;
 		
 		$strBuffer = '';
 		
 		// get all draft elements from database
-		if(static::$arrContentElements === null)
+		if(!isset(static::$arrContentElements[$pid]))
 		{
-			static::$arrContentElements = array();
+			static::$arrContentElements[$pid] = array();
 		
 			$this->import('Database');
-			$this->objDraft = \DraftsModel::findOneByPidAndTable($objElement->pid, $objElement->ptable);
 			
 			$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? ORDER BY sorting')
-										->execute($this->objDraft->id, 'tl_drafts');
+										->execute($objDraft->id, 'tl_drafts');
 			
 			while($objResult->next())
 			{
-				static::$arrContentElements[$objResult->id]['model'] = new \ContentModel($objResult);
-				static::$arrContentElements[$objResult->id]['generated'] = false;
-				
-				$arrState = unserialize(static::$arrContentElements[$objResult->id]['model']->draftState);
-				static::$arrContentElements[$objResult->id]['new'] = is_array($arrState) && in_array('new', $arrState);
+				static::$arrContentElements[$pid][$objResult->id]['model'] = new \ContentModel($objResult);
+				static::$arrContentElements[$pid][$objResult->id]['generated'] = false;
+				static::$arrContentElements[$pid][$objResult->id]['new'] = $this->hasState(static::$arrContentElements[$pid][$objResult->id]['model'], 'new');
 			}
 		}
-		
-		// current element is first, everything
-		$objFirst = reset(static::$arrContentElements);
-
-		if($objFirst->draftRelated == $objElement->id)
-		{
-			$strBuffer .= $this->generateContentElement($objElement);
-			return $strBuffer;
-		}
+			
+		$blnBreak = false;
 		
 		// generate all content elements until current is found, required to display new elements
-		while(list($intId, $arrElement) = each(static::$arrContentElements))
+		foreach(static::$arrContentElements[$pid] as $intId => $arrElement)
 		{
 			if($blnBreak && !$arrElement['new'])
 			{
@@ -206,15 +203,14 @@ class Content extends DraftableDataContainer
 			if($arrElement['new'])
 			{
 				// set new to false so that there won't be recursively calls
-				static::$arrContentElements[$intId]['new'] = false;
-				$strBuffer .= $this->getContentElement($intId);				
+				static::$arrContentElements[$pid][$intId]['new'] = false;
+				$strBuffer .= $this->getContentElement($arrElement['model']);
 			}
 			elseif(!$arrElement['generated'])
 			{
 				$strBuffer .= $this->generateContentElement($arrElement['model']);
+				unset(static::$arrContentElements[$pid][$intId]);
 			}
-			
-			unset(static::$arrContentElements[$intId]);
 			
 			if($intId == $objElement->draftRelated)
 			{
@@ -234,11 +230,10 @@ class Content extends DraftableDataContainer
 	 */
 	protected function generateContentElement($objModel)
 	{
-		static::$arrContentElements[$objModel->id]['generated'] = true;
-		$arrState = unserialize($objModel->draftState);
+		static::$arrContentElements[$objModel->pid][$objModel->id]['generated'] = true;
 		
 		// element is marked as deleted, so do not generate
-		if(is_array($arrState) && in_array('delete', $arrState))
+		if($this->hasState($objModel, 'delete'))
 		{
 			return;			
 		}
