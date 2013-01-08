@@ -52,7 +52,7 @@ class VersioningModel extends Controller
 	 */
 	public function __call($strMethod, $arrArguments)
 	{
-		return call_user_func_array(array($this->objModel, $strMedhod), $arrArguments);
+		return call_user_func_array(array($this->objModel, $strMethod), $arrArguments);
 	}
 	
 	
