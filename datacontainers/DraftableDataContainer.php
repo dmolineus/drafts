@@ -751,7 +751,6 @@ abstract class DraftableDataContainer extends DataContainer
 				return $blnVisible;
 			}
 			
-			$this->setState($objModel, 'visibility');
 			$objModel->invisible = $blnVisible;
 			$objModel->tstamp = time();
 			$objModel->save();
@@ -773,8 +772,7 @@ abstract class DraftableDataContainer extends DataContainer
 			
 			if($objModel !== null && $blnVisible != $objModel->invisible)
 			{
-				$objModel = new VersioningModel($objModel);				
-				$this->removeState($objModel, 'visibility');
+				$objModel = new VersioningModel($objModel);
 				$objModel->invisible = $blnVisible;
 				$objModel->tstamp = time();
 				$objModel->save();
@@ -806,7 +804,7 @@ abstract class DraftableDataContainer extends DataContainer
 				return;
 			}
 		}
-		
+
 		$objModel = new VersioningModel($objModel);
 		$objOriginal = $strModel::findOneBy('draftRelated', $objModel->id);
 		$blnSave = false;
@@ -1088,10 +1086,6 @@ abstract class DraftableDataContainer extends DataContainer
 				$intFlag = 2;
 				break;
 				
-			case 'visibility':
-				$intFlag = 4;
-				break;
-				
 			default:
 				$intFlag = 0;
 				break;
@@ -1128,6 +1122,10 @@ abstract class DraftableDataContainer extends DataContainer
 			
 			case 'sorted':
 				return !$this->hasState($objModel, 'new') && ($objModel->getRelated('draftRelated')->sorting != $objModel->sorting);
+				break;
+			
+			case 'visibility':
+				return !$this->hasState($objModel, 'new') && ($objModel->getRelated('draftRelated')->invisible != $objModel->invisible);
 				break;
 				
 			default:

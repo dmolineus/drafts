@@ -8,8 +8,21 @@
  */
 function toggleDraftLabel(objElement, strClass, strLabel)
 {
-	var objParent = objElement.getParent('.tl_content').getElement('.cte_type');
+	if(objElement.get('tag') == 'a')
+	{
+		var objParent = objElement.getParent('.tl_content').getElement('.cte_type');
+	}
+	else
+	{
+		var objParent = objElement.getElement('.tl_content .cte_type');
+	}
+	
 	var objLabel = objParent.getElement('.draft_label.' + strClass );
+	
+	if(strClass != 'new' && objParent.getElements('.draft_label.new').length > 0)
+	{
+		return false;		
+	}
 	
 	if(!objLabel)
 	{
@@ -74,4 +87,18 @@ function addSubmitButton(label)
  */
 window.addEvent('domready', function() {
 	$$('.popup.task .tl_submit_container').destroy();
+	
+	var pos;
+	$$('.parent_view .sortable li').addEvent('mousedown', function()
+	{
+		pos = this.getNext();
+	});
+	
+	$$('.parent_view .sortable li').addEvent('mouseup', function()
+	{
+		if(pos != this.getNext())
+		{
+			toggleDraftLabel(this, 'sorted', DraftLabels.sorted);
+		}
+	})
 });

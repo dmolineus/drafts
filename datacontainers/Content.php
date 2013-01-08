@@ -101,8 +101,19 @@ class Content extends DraftableDataContainer
 			}
 		}
 		
+		static $blnLabelsRendered = false;
+		$strLabels = '';
+		
+		// pass draft labels as javascript
 		if(!empty($arrState))
 		{
+			if(!$blnLabelsRendered)
+			{
+				$strLabels = '<script>var DraftLabels = { sorted: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_sorted'] . '\''
+							.', visibility: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_visibility'] .  '\'};</script>';
+				$blnLabelsRendered = true;
+			}
+			
 			asort($arrState);
 			foreach ($arrState as $strState) 
 			{
@@ -110,7 +121,7 @@ class Content extends DraftableDataContainer
 			}
 		}
 		
-		return sprintf
+		return $strLabels . sprintf
 		(
 			'<div class="cte_type %s">%s %s</div><div class="%s">%s</div>' . "\n",
 			$key, $type, $label, trim($class), $this->getContentElement($arrRow['id'])
@@ -139,7 +150,7 @@ class Content extends DraftableDataContainer
 			// generate callback
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['child_record_callback'] = array($strClass, 'generateChildRecord');
 			
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['attributes']		= 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return toggleDraftLabel(this, \'visibility\', \'' . urlencode($GLOBALS['TL_LANG'][$this->strTable]['draftState_visibility']) . '\')"';
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['attributes']		= 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return toggleDraftLabel(this, \'visibility\', DraftLabels.visibility)"';
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_callback'] 	= array($strClass, 'generateButtonToggle');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_rules']		= array('toggleIcon:field=invisible:inverted', 'generate');
 		}
