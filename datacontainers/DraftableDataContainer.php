@@ -339,15 +339,11 @@ abstract class DraftableDataContainer extends DataContainer
 			$this->redirect($this->getReferer());
 		}
 		
-		// not possible to use delete all at the moment
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['notDeletable'] = true;
-		
-		$arrAttributes['ptable'] = true;
-		$arrAttributes['alexf'] = 'published';
-		
+		// not possible to use delete all drafts at the moment
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['notDeletable'] = true;		
 		$strBuffer = '<input type="submit" class="tl_submit" name="resetDrafts" value="' . $GLOBALS['TL_LANG'][$this->strTable]['resetDrafts'] . '">';
 		
-		if($this->genericHasAccess($arrAttributes))
+		if($this->hasAccessOnPublished())
 		{
 			$strBuffer .= '<input type="submit" class="tl_submit" name="applyDrafts" value="' . $GLOBALS['TL_LANG'][$this->strTable]['applyDrafts'] . '">';
 		}
@@ -449,7 +445,7 @@ abstract class DraftableDataContainer extends DataContainer
 			}
 		
 			// permission rules
-			$arrRules = array('generic:key=[,reset,apply]', 'hasAccess:key=apply:alexf=published:ptable');
+			$arrRules = array('generic:key=[,reset,apply]', 'hasAccessOnPublished:key=apply');
 			
 			// insert draft operation buttons
 			array_insert($GLOBALS['TL_DCA'][$this->strTable]['list']['operations'], 1, array
@@ -479,7 +475,7 @@ abstract class DraftableDataContainer extends DataContainer
 					'href' 				=> 'key=apply',
 					'icon'				=> 'system/modules/drafts/assets/publish.png',
 					'button_callback' 	=> array($strClass, 'generateButtonDraftApply'),
-					'button_rules' 		=> array('hasAccess:alexf=published:ptable', 'draftState', 'generate'),
+					'button_rules' 		=> array('draftState', 'hasAccessOnPublished', 'generate'),
 				),
 			));
 		}
@@ -487,10 +483,10 @@ abstract class DraftableDataContainer extends DataContainer
 		// LIVE MODE SETTINGS
 		else
 		{
-			$arrRules = array('hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]:ptable:alexf=published');			
+			$arrRules = array('hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]');			
 			
 			// close table if user has no access to insert new content element
-			if(!$this->User->hasAccess($this->strTable . '::published', 'alexf'))
+			if(!$this->hasAccessOnPublished())
 			{
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['closed'] = true;
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['notEditable'] = true;
@@ -963,21 +959,19 @@ abstract class DraftableDataContainer extends DataContainer
 	 */
 	protected function buttonRuleHasAccessOnPublished(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		$arrAttributes['ptable'] = true;
-		$arrAttributes['alexf'] = 'published';
-		
 		// grant access if not published
 		if(!$this->isPublished($arrRow))
 		{
 			return true;
 		}
 		
+		$arrAttributes['value'] = !$this->hasAccessOnPublished();
+		
 		if($arrRow === null || isset($arrAttributes['hide']))
 		{
-			return $this->genericHasAccess($arrAttributes);
+			return $arrAttributes['value'];
 		}
 		
-		$arrAttributes['rule'] = 'hasAccess';
 		return $this->buttonRuleDisableIcon($strButton, $strHref, $strLabel, $strTitle, $strIcon, $strAttributes, $arrAttributes);
 	}
 	
@@ -1101,6 +1095,18 @@ abstract class DraftableDataContainer extends DataContainer
 		return false;
 	}
 
+	
+	/**
+	 * check if user has accesss on published content
+	 * 
+	 * @return bool
+	 */
+	protected function hasAccessOnPublished()
+	{
+		return $this->User->hasAccess($this->strTable . '::published', 'alexf');		
+	}
+	
+
 	/**
 	 * check if model has a state
 	 * 
@@ -1218,7 +1224,7 @@ abstract class DraftableDataContainer extends DataContainer
 		}
 		else
 		{
-			$blnHasAccess = $this->User->hasAccess($this->strTable . '::published', 'alexf');
+			$blnHasAccess = $this->hasAccessOnPublished();
 		
 			if($this->strAction != 'show' && Input::post('isAjaxRequest') == '')
 			{
@@ -1279,13 +1285,8 @@ abstract class DraftableDataContainer extends DataContainer
 	 * @return bool
 	 */
 	protected function permissionRuleHasAccessOnPublished($objDc, &$arrAttributes, &$strError)
-	{		
-		if(!$this->isPublished())
-		{
-			return true;
-		}
-		
-		return $this->permissionRuleHasAccess($objDc, $arrAttributes, $strError);
+	{
+		return !$this->isPublished() || !$this->permissionRuleGeneric($objDc, $arrAttributes, $strError) || $this->hasAccessOnPublished();
 	}
 	
 	
