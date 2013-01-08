@@ -71,10 +71,37 @@ class Content extends DraftableDataContainer
 		}
 		
 		// Generate labels
-		$arrState = unserialize($arrRow['draftState']);
-		$label = '';
+		$arrState = array();
+		$objModel = new $this->strModel();
+		$objModel->setRow($arrRow);
+		if ($this->hasState($objModel, 'new'))
+		{
+			$arrState[] = 'new';
+		}
+		else
+		{
+			if($this->hasState($objModel, 'modified'))
+			{
+				$arrState[] = 'modified';
+			}
+			
+			if($this->hasState($objModel, 'sorted'))
+			{
+				$arrState[] = 'sorted';
+			}
+			
+			if($this->hasState($objModel, 'delete'))
+			{
+				$arrState[] = 'delete';
+			}
+			
+			if($this->hasState($objModel, 'visibility'))
+			{
+				$arrState[] = 'visibility';
+			}
+		}
 		
-		if(is_array($arrState) && !empty($arrState))
+		if(!empty($arrState))
 		{
 			asort($arrState);
 			foreach ($arrState as $strState) 
@@ -118,7 +145,7 @@ class Content extends DraftableDataContainer
 		}
 	
 		// check permission for operations in live mode
-		else
+		elseif($this->objDraft !== null)
 		{
 			// permission rules
 			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('draftPermission');

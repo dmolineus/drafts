@@ -142,7 +142,7 @@ abstract class DraftableDataContainer extends DataContainer
 			$objNew = $this->prepareModel($objModel, false, true, true);
 			$objNew->save(true);
 			
-			$objModel->draftState = '';
+			$objModel->draftState = 0;
 			$objModel->draftRelated = $objNew->id;
 			$objModel->tstamp = time();
 			$objModel->save();
@@ -180,7 +180,7 @@ abstract class DraftableDataContainer extends DataContainer
 				$objOriginal->save();
 			}
 			
-			$objModel->draftState= '';
+			$objModel->draftState= 0;
 			$objModel->save();
 			
 		}
@@ -304,7 +304,7 @@ abstract class DraftableDataContainer extends DataContainer
 			
 			// limit by draft to avoid hacking attemps
 			$this->import('Database');
-			$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftState != "" AND pid=? AND ptable=? AND ' . $this->Database->findInSet('id', $arrIds);
+			$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? AND ' . $this->Database->findInSet('id', $arrIds);
 			$objResult = $this->Database->prepare($strQuery)->execute($this->objDraft->id, 'tl_drafts');
 
 			while($objResult->next())
@@ -327,7 +327,7 @@ abstract class DraftableDataContainer extends DataContainer
 			}
 			
 			$this->import('Database');
-			$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftState != "" AND pid=? AND ptable=? AND ' . $this->Database->findInSet('id', $arrIds);
+			$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? AND ' . $this->Database->findInSet('id', $arrIds);
 			$objResult = $this->Database->prepare($strQuery)->execute($this->objDraft->id, 'tl_drafts');
 
 			while($objResult->next())
@@ -516,13 +516,7 @@ abstract class DraftableDataContainer extends DataContainer
 	public function onCopy($insertID, $objDc)
 	{
 		// label copied element as new
-		if($this->blnDraftMode)
-		{
-			$arrState = array('new');
-			$arrSet = array('tstamp' => time(), 'draftState' => $arrState, 'draftRelated' => null);
-			$this->Database->prepare('UPDATE ' . $this->strTable . ' %s WHERE id=?')->set($arrSet)->execute($insertID);
-		}
-		elseif($this->objDraft !== null)
+		if(!$this->blnDraftMode && $this->objDraft !== null)
 		{
 			$strModel = $this->strModel;
 			$objModel = $strModel::findByPK($insertID);
@@ -546,13 +540,8 @@ abstract class DraftableDataContainer extends DataContainer
 	 */
 	public function onCreate($strTable, $intId, $arrSet, $objDc)
 	{
-		if($this->blnDraftMode)
-		{
-			$arrSet = array('draftState' => array('new'));
-			$this->Database->prepare('UPDATE ' . $this->strTable . ' %s WHERE id=?')->set($arrSet)->execute($intId);
-		}
 		// create draft
-		elseif($this->objDraft !== null)
+		if(!$this->blnDraftMode && $this->objDraft !== null)
 		{
 			$objModel = $this->prepareModel($arrSet, true);
 			$objModel->save();
@@ -571,7 +560,7 @@ abstract class DraftableDataContainer extends DataContainer
 	 */
 	public function onCut($objDc)
 	{
-		if($this->objDraft === null)
+		if($this->objDraft === null || $this->blnDraftMode)
 		{
 			return;
 		}
@@ -592,21 +581,7 @@ abstract class DraftableDataContainer extends DataContainer
 			$arrSet = array();
 			
 			$objModel = new VersioningModel(new $this->strModel($objResult));
-			
-			if($this->blnDraftMode && !$this->hasState($objModel, 'sorted'))
-			{
-				$this->setState($objModel, 'sorted');
-			}
-			elseif(!$this->blnDraftMode)
-			{
-				$this->removeState($objModel, 'sorted');
-				$arrSet['sorting'] = $objResult->sorting;
-			}
-			else 
-			{
-				continue;
-			}
-			
+			$objModel->sorting = $objResult->sorting;			
 			$objModel->tstamp = time();
 			$objModel->save();
 		}
@@ -700,7 +675,7 @@ abstract class DraftableDataContainer extends DataContainer
 		// set draft state to modified because we do not know what has changed
 		if($this->blnDraftMode)
 		{			
-			$arrSet = array('draftState' => array('modified'), 'tstamp' => time);
+			$arrSet = array('draftState' => 1, 'tstamp' => time);
 			$this->Database->prepare('UPDATE ' . $strTable . ' %s WHERE id=?')->set($arrSet)->executeUncached($intId);
 		}
 		// create new version of draft
@@ -798,9 +773,7 @@ abstract class DraftableDataContainer extends DataContainer
 			
 			if($objModel !== null && $blnVisible != $objModel->invisible)
 			{
-				$objModel = new VersioningModel($objModel);
-				$arrState = unserialize($objModel->draftState);
-				
+				$objModel = new VersioningModel($objModel);				
 				$this->removeState($objModel, 'visibility');
 				$objModel->invisible = $blnVisible;
 				$objModel->tstamp = time();
@@ -889,7 +862,7 @@ abstract class DraftableDataContainer extends DataContainer
 			if($blnSave) 
 			{
 				$objModel->tstamp = time();
-				$objModel->draftState = '';
+				$objModel->draftState = 0;
 				$objModel->save();
 			}
 		}
@@ -934,14 +907,15 @@ abstract class DraftableDataContainer extends DataContainer
 	 */
 	protected function buttonRuleDraftState(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		$arrState = unserialize($arrRow['draftState']);
+		$objModel = new $this->strModel();
+		$objModel->setRow($arrRow);
 		
 		if(isset($arrAttributes['modified']))
 		{
-			return  (is_array($arrState) && in_array('modified', $arrState));
+			return  $this->hasState($objModel, 'modified');
 		}
 		
-		return (is_array($arrState) && !empty($arrState));
+		return $objModel->draftState > 0 || $this->hasState($objModel, 'new') || $this->hasState($objModel, 'sorted');
 	}
 	
 	
@@ -1095,6 +1069,37 @@ abstract class DraftableDataContainer extends DataContainer
 		return false;
 	}
 
+
+	/**
+	 * get state flag 
+	 * 
+	 * @param string state
+	 * @return int
+	 */
+	protected function getStateFlag($strState)
+	{
+		switch ($strState) 
+		{
+			case 'modified':
+				$intFlag = 1;
+				break;
+			
+			case 'delete':
+				$intFlag = 2;
+				break;
+				
+			case 'visibility':
+				$intFlag = 4;
+				break;
+				
+			default:
+				$intFlag = 0;
+				break;
+		}
+		
+		return $intFlag;
+	}
+
 	
 	/**
 	 * check if user has accesss on published content
@@ -1115,13 +1120,27 @@ abstract class DraftableDataContainer extends DataContainer
 	 */
 	protected function hasState($objModel, $strState)
 	{
-		if(!is_array($objModel->draftState))
+		switch($strState)
 		{
-			$arrData = unserialize($objModel->draftState);
-			$objModel->draftState = is_array($arrData) ? $arrData : array();
+			case 'new':
+				return $objModel->draftRelated === null;
+				break;
+			
+			case 'sorted':
+				return !$this->hasState($objModel, 'new') && ($objModel->getRelated('draftRelated')->sorting != $objModel->sorting);
+				break;
+				
+			default:
+				$intFlag = $this->getStateFlag($strState);
+				break;
 		}
 		
-		return in_array($strState, $objModel->draftState);
+		if($intFlag == 0)
+		{
+			return false;
+		}
+		
+		return $objModel->draftState & $intFlag;
 	}
 	
 	
@@ -1509,7 +1528,7 @@ abstract class DraftableDataContainer extends DataContainer
 		// empty draft state
 		if(!$blnDraft)
 		{
-			$objNew->draftState = '';
+			$objNew->draftState = 0;
 		}
 		
 		$objNew->tstamp = time();
@@ -1526,12 +1545,9 @@ abstract class DraftableDataContainer extends DataContainer
 	 */
 	protected function removeState($objModel, $strState)
 	{
-		if($this->hasState($objModel, $strState))
+		if(!$this->hasState($objModel, $strState))
 		{
-			$intPos = array_search($strState, $objModel->draftState);
-			$arrState = $objModel->draftState;
-			unset($arrState[$intPos]);			
-			$objModel->draftState = $arrState;
+			$objModel->draftState &= ~$this->getStateFlag($strState);
 			return true;
 		}
 		
@@ -1549,9 +1565,7 @@ abstract class DraftableDataContainer extends DataContainer
 	{
 		if(!$this->hasState($objModel, $strState))
 		{
-			$arrState = $objModel->draftState;
-			$arrState[] = $strState;
-			$objModel->draftState = $arrState;
+			$objModel->draftState |= $this->getStateFlag($strState);
 		}
 	}
 

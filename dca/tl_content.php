@@ -25,5 +25,5 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated'] = array
 
 $GLOBALS['TL_DCA']['tl_content']['fields']['draftState'] = array
 (
-	'sql' 						=> "varchar(255) NOT NULL default ''",
+	'sql' 						=> "tinyint(1) NOT NULL default '0'",
 );
