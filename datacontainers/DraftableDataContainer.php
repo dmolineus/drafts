@@ -483,7 +483,7 @@ abstract class DraftableDataContainer extends DataContainer
 		// LIVE MODE SETTINGS
 		else
 		{
-			$arrRules = array('hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]');			
+			$arrRules = array('draftPermission', 'hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]');			
 			
 			// close table if user has no access to insert new content element
 			if(!$this->hasAccessOnPublished())
