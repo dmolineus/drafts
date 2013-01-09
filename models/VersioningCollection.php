@@ -29,12 +29,12 @@ class VersioningCollection extends \Collection
 	 */
 	protected function fetchNext()
 	{
-		if(!parent::fetchNext())
+		if ($this->objResult->next() == false)
 		{
 			return false;
 		}
-		
-		$this->arrModels[$this->intIndex + 1] = new VersioningModel($this->arrModels[$this->intIndex + 1]);
+
+		$this->arrModels[$this->intIndex + 1] = new VersioningModel($this->strTable, $this->objResult);
 		return true;
 	}
 	
