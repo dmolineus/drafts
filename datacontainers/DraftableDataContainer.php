@@ -932,12 +932,14 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			return true;
 		}
 		
-		$arrAttributes['value'] = !$this->hasAccessOnPublished();
+		$blnAccess = $this->hasAccessOnPublished();
 		
 		if($arrRow === null || isset($arrAttributes['hide']))
 		{
-			return $arrAttributes['value'];
+			return $blnAccess;
 		}
+		
+		$arrAttributes['value'] = !$blnAccess;
 		
 		return $this->buttonRuleDisableIcon($strButton, $strHref, $strLabel, $strTitle, $strIcon, $strAttributes, $arrAttributes);
 	}
@@ -1198,7 +1200,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	{	
 		$intId = $arrRow !== null ? $arrRow['pid'] : ($this->blnDraftMode ? $this->objDraft->pid : $this->intId);
 		$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config'][($this->blnDraftMode ? 'd' : 'p') . 'table'] . ' WHERE id=' . $intId;
-		
+
 		return (bool) $this->Database->query($strQuery)->published;
 	}
 
