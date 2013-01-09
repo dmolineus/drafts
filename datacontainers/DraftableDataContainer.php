@@ -384,7 +384,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			'href' 				=> 'draft=0',
 			'class'				=> 'header_live',
 			'button_callback' 	=> array($strClass, 'generateGlobalButtonLive'),
-			'button_rules' 		=> array('validate:get:var=draft:is=1', 'switchMode', 'generate'),
+			'button_rules' 		=> array('switchMode', 'generate'),
 		);
 			
 		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['draft'] = array
@@ -393,7 +393,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			'href' 				=> 'draft=1',
 			'class'				=> 'header_draft',
 			'button_callback' 	=> array($strClass, 'generateGlobalButtonDraft'),
-			'button_rules' 		=> array('validate:get:var=draft:not=1', 'switchMode:draft', 'generate'),
+			'button_rules' 		=> array('switchMode:draft', 'generate'),
 		);
 		
 		$strAttributes = sprintf('onclick="Backend.openModalIframe({\'width\':770,\'title\':\'%s\',\'url\':this.href});'
@@ -959,7 +959,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected function buttonRuleSwitchMode(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		if($this->objDraft === null && !$this->isPublished())
+		$blnMode = isset($arrAttributes['draft']) ? (Input::get('draft') == '1') : (Input::get('draft') != '1');
+
+		if(($this->objDraft === null && !$this->isPublished()) || $blnMode)
 		{
 			return false;
 		}
@@ -999,69 +1001,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 
 		$strHref = 'system/modules/drafts/task.php?id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN;
 		return true;
-	}
-	
-	
-	/**
-	 * validate values
-	 * 
-	 * @param string the button name 
-	 * @param string href
-	 * @param string label
-	 * @param string title
-	 * @param string icon class
-	 * @param string added attributes
-	 * @param array option data row of operation buttons
-	 * @return bool true
-	 */
-	protected function buttonRuleValidate(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
-	{
-		if(isset($arrAttributes['get']))
-		{
-			$strValue = \Input::get($arrAttributes['var']);
-		}
-		elseif(isset($arrAttributes['post']))
-		{
-			$strValue = \Input::post($arrAttributes['var']);
-		}
-		elseif(isset($arrAttributes['row']))
-		{
-			$strValue = $arrRow[$arrAttributes['var']];
-		}
-		elseif(isset($arrAttributes['ptable']))
-		{
-			$this->import('Database');
-			
-			$strTable = ($arrRow !== null && isset($arrRow['ptable'])) ? $arrRow['ptable'] : $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'];
-			
-			if($strTable == 'tl_drafts')
-			{
-				$strTable = $GLOBALS['TL_DCA'][$this->strTable]['config']['dtable'];
-			}
-
-			$strQuery = sprintf('SELECT * FROM %s WHERE id=%s',
-				$strTable, $arrRow === null ? $this->intId : $arrRow['id']
-			);
-			
-			$objResult = $this->Database->query($strQuery);
-			$strValue = $objResult->{$arrAttributes['var']};
-		}
-		else 
-		{
-			return false;
-		}
-			
-		if(isset($arrAttributes['is']))
-		{
-			return $strValue == $arrAttributes['is'];
-		}
-			
-		if(isset($arrAttributes['not']))
-		{
-			return $strValue != $arrAttributes['not'];
-		}
-		
-		return false;
 	}
 
 	
