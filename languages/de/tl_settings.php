@@ -22,3 +22,5 @@ $GLOBALS['TL_LANG']['tl_settings']['draftUseTaskModule'][0] = 'Task Module verwe
 $GLOBALS['TL_LANG']['tl_settings']['draftUseTaskModule'][1] = 'Integriert das Task Modul zur Freigabeaufforderung';
 $GLOBALS['TL_LANG']['tl_settings']['draftsTaskDefaultDeadline'][0] = 'Deadline in Tagen';
 $GLOBALS['TL_LANG']['tl_settings']['draftsTaskDefaultDeadline'][1] = 'Aufgabe in Task-Center wird automatisch erstellt. Legen Sie die als Standard gesetzte Dauer der Deadline fest';
+$GLOBALS['TL_LANG']['tl_settings']['draftModeAsDefaultOptions'][1] = 'Für Benutzer ohne Recht zu veröffentlichen';
+$GLOBALS['TL_LANG']['tl_settings']['draftModeAsDefaultOptions'][2] = 'Für alle Nutzer';

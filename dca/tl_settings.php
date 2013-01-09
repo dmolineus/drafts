@@ -22,22 +22,23 @@ $GLOBALS['TL_DCA']['tl_settings']['fields']['draftModules'] = array
 	'inputType'		=> 'checkbox',
 	'options'		=> &$GLOBALS['TL_CONFIG']['draftModulesOptions'],
 	'reference'		=> &$GLOBALS['TL_LANG']['MOD'],
-	
 	'eval'			=> array('multiple' => true),
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['draftModeAsDefault'] = array
 (
 	'label'			=> &$GLOBALS['TL_LANG']['tl_settings']['draftModeAsDefault'],
-	'inputType'		=> 'checkbox',
-	'eval'			=> array('tl_class' => 'w50 clr'),
+	'inputType'		=> 'select',
+	'options'		=> array(1, 2),
+	'reference'		=> $GLOBALS['TL_LANG']['tl_settings']['draftModeAsDefaultOptions'],
+	'eval'			=> array('includeBlankOption' => true, 'tl_class' => 'w50 clr'),
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['draftUseTaskModule'] = array
 (
 	'label'			=> &$GLOBALS['TL_LANG']['tl_settings']['draftUseTaskModule'],
 	'inputType'		=> 'checkbox',
-	'eval'			=> array('tl_class' => 'w50'),
+	'eval'			=> array('tl_class' => 'w50 m12'),
 );
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['draftTaskDefaultDeadline'] = array

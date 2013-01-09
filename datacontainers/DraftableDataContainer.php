@@ -475,7 +475,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			$arrRules = array('draftPermission', 'hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]');			
 			
 			// close table if user has no access to insert new content element
-			if(!$this->hasAccessOnPublished())
+			if(!$this->hasAccessOnPublished() && $this->intId != '' && $this->isPublished())
 			{
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['closed'] = true;
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['notEditable'] = true;
@@ -1060,12 +1060,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			if(in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create'))
 			{
 				$this->objDraft = DraftsModel::findOneByPidAndTable($this->intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
-				
-				// redirect to draft mode
-				if($this->objDraft !== null && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] && Input::get('draft') == '')
-				{
-					$this->redirect('contao/main.php?do=' . Input::get('do') . '&table='. $this->strTable . '&draft=1&id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN);
-				}
 			}
 			else 
 			{		
@@ -1077,12 +1071,10 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 					$this->objDraft = new DraftsModel($objResult);
 				}
 			}
-			
-			return;
 		}
 		
 		// create draft
-		elseif(Input::get('mode') == 'create' && $this->strAction == null)
+		if((Input::get('mode') == 'create' && $this->strAction == null) || (!$this->blnDraftMode && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] == 2))
 		{
 			if($this->objDraft === null)
 			{
@@ -1122,7 +1114,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			$this->objDraft = DraftsModel::findByPK($this->intId);
 		}		
 
-		if($this->objDraft === null)
+		if($this->blnDraftMode && $this->objDraft === null)
 		{
 			$this->triggerError('No Draft Model found', initializeDraft);
 		}
@@ -1130,27 +1122,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	
 	
 	/**
-	 * initial draft mode
+	 * initial modes
 	 */
 	protected function initializeModes()
 	{
-		if($this->blnDraftMode)
-		{
-			// set session data for draft mode
-			if($this->strAction == null)
-			{
-				$session = $this->Session->get('referer');
-				$session['current'] = \Environment::get('requestUri');
-				
-				if(\Environment::get('requestUri') != $session['current'])
-				{
-					$session['last'] = $session['current'];
-				}
-				
-				$this->Session->set('referer', $session);
-			}
-		}
-		else
+		if(!$this->blnDraftMode)
 		{
 			$blnHasAccess = $this->hasAccessOnPublished();
 		
@@ -1164,6 +1140,19 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			if(!$blnHasAccess && $this->isPublished() && $GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] == 'sorting')
 			{
 				$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] = 'sorting ';
+			}
+			
+							
+			// default redirect to draft mode
+			if(Input::get('draft') == '' && Input::get('redirect') == '' && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] > 0 && (in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create'))) 
+			{
+				if($this->objDraft !== null)
+				{
+					if(!$this->hasAccessOnPublished() || $GLOBALS['TL_CONFIG']['draftModeAsDefault'] == 2)
+					{ 
+						$this->redirect('contao/main.php?do=' . Input::get('do') . '&table='. $this->strTable . '&draft=1&id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN);
+					}
+				}
 			}			
 		}
 	}
@@ -1176,16 +1165,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 * @return bool
 	 */
 	protected function isPublished($arrRow=null)
-	{
-		if($this->objDraft === null)
-		{
-			return true;
-		}
-		
+	{	
 		$intId = $arrRow !== null ? $arrRow['pid'] : ($this->blnDraftMode ? $this->objDraft->pid : $this->intId);
 		$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config'][($this->blnDraftMode ? 'd' : 'p') . 'table'] . ' WHERE id=' . $intId;
 		
-		return $this->Database->query($strQuery)->published == '1';
+		return (bool) $this->Database->query($strQuery)->published;
 	}
 
 
