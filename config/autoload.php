@@ -26,6 +26,9 @@ ClassLoader::addClasses(array
 	// modules
 	'ModuleTasks' 											=> 'system/modules/drafts/modules/ModuleTasks.php',
 	
+	// elements
+	'ContentElement' 											=> 'system/modules/drafts/elements/ContentElement.php',
+	
 	// widgets
 	'Netzmacht\Drafts\Widget\PreviewSwitch'					=> 'system/modules/drafts/widgets/PreviewSwitch.php',
 	

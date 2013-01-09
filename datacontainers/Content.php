@@ -156,7 +156,7 @@ class Content extends DraftableDataContainer
 		}
 	
 		// check permission for operations in live mode
-		elseif($this->objDraft !== null)
+		else
 		{
 			// permission rules
 			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('draftPermission');
@@ -192,93 +192,77 @@ class Content extends DraftableDataContainer
 	 * @param string
 	 * @return string
 	 */
-	public function previewContentElement($objElement, $strBuffer)
+	public function previewContentElement($objRow, $strBuffer, $objElement)
 	{
 		// only render on preview
-		if(\Input::cookie('DRAFT_MODE') != '1' || $objElement->ptable == 'tl_drafts')
+		if(\Input::cookie('DRAFT_MODE') != '1' || $objRow->ptable == 'tl_drafts')
 		{
-			if($objElement->ptable == 'tl_drafts')
+			if($objRow->ptable == 'tl_drafts')
 			{
-				unset(static::$arrContentElements[$objElement->pid][$objElement->id]);
+				unset(static::$arrContentElements[$objRow->pid][$objRow->id]);
 			}
 			return $strBuffer;
 		}
 		
-		$objDraft = \DraftsModel::findOneByPidAndTable($objElement->pid, $objElement->ptable);		
+		$objDraft = \DraftsModel::findOneByPidAndTable($objRow->pid, $objRow->ptable);
+		
+		if($objDraft === null)
+		{
+			return $strBuffer;
+		}
+		
 		$pid = $objDraft->id;
 		
-		$strBuffer = '';
-		
-		// get all draft elements from database
+		// get all ids of draft elements to get new elements and the new order
 		if(!isset(static::$arrContentElements[$pid]))
 		{
 			static::$arrContentElements[$pid] = array();
-		
-			$this->import('Database');
-			
-			$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? ORDER BY sorting')
+						
+			$objResult = $this->Database->prepare('SELECT id FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? ORDER BY sorting')
 										->execute($objDraft->id, 'tl_drafts');
 			
-			while($objResult->next())
-			{
-				static::$arrContentElements[$pid][$objResult->id]['model'] = new \ContentModel($objResult);
-				static::$arrContentElements[$pid][$objResult->id]['generated'] = false;
-				static::$arrContentElements[$pid][$objResult->id]['new'] = $this->hasState(static::$arrContentElements[$pid][$objResult->id]['model'], 'new');
-			}
+			static::$arrContentElements[$pid] = $objResult->fetchEach('id');
 		}
 			
 		$blnBreak = false;
+		$strGenerated = '';
 		
 		// generate all content elements until current is found, required to display new elements
-		foreach(static::$arrContentElements[$pid] as $intId => $arrElement)
+		foreach(static::$arrContentElements[$pid] as $intKey => $intId)
 		{
-			if($blnBreak && !$arrElement['new'])
+			unset(static::$arrContentElements[$pid][$intKey]);
+			
+			if($intId == $objRow->draftRelated)
 			{
+				$strGenerated .= $strBuffer;	
 				break;
 			}
-			
-			// call getContentElement so that getContentElement Hooks are called
-			if($arrElement['new'])
+			else
 			{
-				// set new to false so that there won't be recursively calls
-				static::$arrContentElements[$pid][$intId]['new'] = false;
-				$strBuffer .= $this->getContentElement($arrElement['model']);
-			}
-			elseif(!$arrElement['generated'])
-			{
-				$strBuffer .= $this->generateContentElement($arrElement['model']);
-				unset(static::$arrContentElements[$pid][$intId]);
-			}
-			
-			if($intId == $objElement->draftRelated)
-			{
-				$blnBreak = true;
+				$strGenerated .= $this->getContentElement($intId);
 			}
 		}
 		
-		return $strBuffer;
+		return $strGenerated;
 	}
 
 
 	/**
-	 * generate a single content element
-	 * 
-	 * @param Model
-	 * @return string
+	 * button true if no alias exists, used as rule for disabling icon
+	 *
+	 * @param string the button name 
+	 * @param string href
+	 * @param string label
+	 * @param string title
+	 * @param string icon class
+	 * @param string added attributes
+	 * @param array option data row of operation buttons
+	 * @return bool true
 	 */
-	protected function generateContentElement($objModel)
+	protected function buttonRuleAliasElement(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		static::$arrContentElements[$objModel->pid][$objModel->id]['generated'] = true;
-		
-		// element is marked as deleted, so do not generate
-		if($this->hasState($objModel, 'delete'))
-		{
-			return;			
-		}
-
-		$strClass = $this->findContentElement($objModel->type);
-		$objElement = new $strClass($objModel);
-				
-	    return $objElement->generate();
+		$objElement = $this->Database->prepare("SELECT id FROM tl_content WHERE cteAlias=? AND type='alias'")->limit(1)->execute($arrRow['id']);		
+		return $objElement->numRows < 1;		
 	}
+
 }

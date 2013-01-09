@@ -13,12 +13,7 @@
  **/
 
 namespace Netzmacht\Drafts\DataContainer;
-use Netzmacht\Utils\DataContainer, 
-	Netzmacht\Drafts\Model\VersioningModel, 
-	Input, 
-	DraftsModel,
-	DC_Table,
-	Contao\Database\Mysql\Result;
+use Netzmacht\Drafts\Model\VersioningModel,	Input, DraftsModel,	DC_Table, Contao\Database\Mysql\Result;
 
 
 // initialize draft modules
@@ -28,7 +23,7 @@ $GLOBALS['TL_CONFIG']['draftModules'] = unserialize($GLOBALS['TL_CONFIG']['draft
  * DraftableDataContainer provides draft functionality for tables with dynamic ptable
  * 
  */
-abstract class DraftableDataContainer extends DataContainer
+abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 {
 	
 	/**
@@ -125,7 +120,7 @@ abstract class DraftableDataContainer extends DataContainer
 			}
 		}
 		
-		$objOriginal = $strModel::findByPK($objModel->draftRelated);
+		$objOriginal = $objModel->getRelated('draftRelated');
 
 		// delete original will also delete draft
 		if($this->hasState($objModel, 'delete'))
@@ -443,6 +438,9 @@ abstract class DraftableDataContainer extends DataContainer
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('draftPermission:class=' . $GLOBALS['TL_DCA'][$this->strTable]['config']['onload_callback'][0][0]);
 				unset($GLOBALS['TL_DCA'][$this->strTable]['config']['onload_callback'][0]);
 			}
+
+			// set relation to eagerly
+			$GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated']['relation']['load'] = 'eager';
 		
 			// permission rules
 			$arrRules = array('generic:key=[,reset,apply]', 'hasAccessOnPublished:key=apply');
@@ -806,7 +804,7 @@ abstract class DraftableDataContainer extends DataContainer
 		}
 
 		$objModel = new VersioningModel($objModel);
-		$objOriginal = $strModel::findOneBy('draftRelated', $objModel->id);
+		$objOriginal = $objModel->getRelated('draftRelated');
 		$blnSave = false;
 
 		// modified draft, reset to original
@@ -873,25 +871,6 @@ abstract class DraftableDataContainer extends DataContainer
 
 
 	/**
-	 * button true if no alias exists, used as rule for disabling icon
-	 *
-	 * @param string the button name 
-	 * @param string href
-	 * @param string label
-	 * @param string title
-	 * @param string icon class
-	 * @param string added attributes
-	 * @param array option data row of operation buttons
-	 * @return bool true
-	 */
-	protected function buttonRuleAliasElement(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
-	{
-		$objElement = $this->Database->prepare("SELECT id FROM tl_content WHERE cteAlias=? AND type='alias'")->limit(1)->execute($arrRow['id']);		
-		return $objElement->numRows < 1;		
-	}
-
-
-	/**
 	 * decide which buttons can be displays depending on draft state
 	 *
 	 * @param string the button name 
@@ -913,7 +892,7 @@ abstract class DraftableDataContainer extends DataContainer
 			return  $this->hasState($objModel, 'modified');
 		}
 		
-		return $objModel->draftState > 0 || $this->hasState($objModel, 'new') || $this->hasState($objModel, 'sorted');
+		return $objModel->draftState > 0 || $this->hasState($objModel, 'new') || $this->hasState($objModel, 'sorted') || $this->hasState($objModel, 'visibility');
 	}
 	
 	
@@ -932,7 +911,7 @@ abstract class DraftableDataContainer extends DataContainer
 	protected function buttonRuleHasAccessOnPublished(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
 		// grant access if not published
-		if(!$this->isPublished($arrRow))
+		if($this->objDraft === null || !$this->isPublished($arrRow))
 		{
 			return true;
 		}
@@ -1266,30 +1245,15 @@ abstract class DraftableDataContainer extends DataContainer
 	 */
 	protected function isPublished($arrRow=null)
 	{
-		if($this->blnIsPublished !== null)
+		if($this->objDraft === null)
 		{
-			return $this->blnIsPublished;
+			return true;
 		}
 		
-		if($this->blnDraftMode)
-		{
-			if($this->objDraft === null)
-			{
-				$this->blnIsPublished = true;
-				return true;
-			}
-			
-			$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['dtable'] . ' WHERE id=' . $this->objDraft->pid;
-		}
-		else
-		{
-			$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . ' WHERE id=' . $this->intId;
-		}
+		$intId = $arrRow !== null ? $arrRow['pid'] : ($this->blnDraftMode ? $this->objDraft->pid : $this->intId);
+		$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config'][($this->blnDraftMode ? 'd' : 'p') . 'table'] . ' WHERE id=' . $intId;
 		
-		$objResult = $this->Database->query($strQuery);
-		$this->blnIsPublished = ($objResult->published == '1' ? true : false);
-		
-		return $this->blnIsPublished;
+		return $this->Database->query($strQuery)->published == '1';
 	}
 
 
@@ -1617,4 +1581,5 @@ abstract class DraftableDataContainer extends DataContainer
 			$this->redirect('contao/main.php?act=error');
 		}
 	}
+	
 }
