@@ -31,6 +31,10 @@ function toggleDraftLabel(objElement, strClass, strLabel)
 		objLabel.set('text', strLabel);
 		objLabel.inject(objParent);
 	}
+	else if(strClass == 'visibility')
+	{
+		objLabel.toggle();
+	}
 	
 	return false;
 }
