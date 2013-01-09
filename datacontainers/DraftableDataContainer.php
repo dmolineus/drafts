@@ -1060,6 +1060,12 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			if(in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create'))
 			{
 				$this->objDraft = DraftsModel::findOneByPidAndTable($this->intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
+				
+				// redirect to draft mode
+				if($this->objDraft !== null && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] && Input::get('draft') == '')
+				{
+					$this->redirect('contao/main.php?do=' . Input::get('do') . '&table='. $this->strTable . '&draft=1&id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN);
+				}
 			}
 			else 
 			{		

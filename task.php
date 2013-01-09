@@ -93,7 +93,7 @@ class TaskController extends Backend
 				'createdBy' => $this->User->id,
 				'title' => $strTitle,
 				'draftsid' => $objDraft->id,
-				'deadline'	=> time() + 86400,
+				'deadline'	=> time() + $GLOBALS['TL_CONFIG']['draftTaskDefaultDeadline'] * 86400,
 			);
 
 			$objTask = $this->Database->prepare("INSERT INTO tl_task %s")->set($arrSet)->execute();
