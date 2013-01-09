@@ -13,7 +13,7 @@
  **/
  
 namespace Netzmacht\Drafts\Model;
-use Controller;
+use Controller, Model, Model\Collection;
 
 /**
  * Versioning Model allows to save model and use the versioning of contao
@@ -23,22 +23,45 @@ class VersioningModel extends Controller
 {
 	
 	/**
+	 * enable versioning
+	 * 
+	 * @var bool
+	 */
+	protected $blnVersioning;
+	
+	/**
 	 * model reference
 	 * @var \Model
 	 */
 	protected $objModel;
 	
+	/**
+	 * class of collection class
+	 * 
+	 * @var string
+	 */
+	protected static $strCollectionClass = 'VersioningCollection';
+	
 	
 	/**
 	 * set model
 	 * 
+	 * @param string
 	 * @param \Model
+	 * @param bool
 	 */
-	public function __construct($objModel)
+	public function __construct($strTable, $objModel=null, $blnVersioning=true)
 	{
 		parent::__construct();
 		
-		$this->objModel = $objModel;
+		if(!$objModel instanceof Model)
+		{
+			$strClass = $this->getModelClassFromTable($strTable);
+			$objModel = new $strClass($objModel);
+		}
+		
+		$this->blnVersioning = true;
+		$this->objModel = $objModel;		
 		$this->import('Database');
 	}
 	
@@ -57,6 +80,45 @@ class VersioningModel extends Controller
 	
 	
 	/**
+	 * create a static call
+	 * First param has to be the table name, so it's possible to decide which model is used
+	 * 
+	 * VersioningModel::findByPK('tl_user', 1);
+	 * 
+	 * @param string
+	 * @return VersioningModel|VersioningCollection 
+	 */
+	public static function __callStatic($strName, $arrArguments)
+	{
+		$strTable = array_shift($arrArguments);
+		$strClass = static::getModelClassFromTable($strTable);
+		$objModel = call_user_func_array(array($strClass, $strName), $arrArguments);
+		
+		if($objModel === null)
+		{
+			return null;
+		}
+		elseif($objModel instanceof Collection)
+		{
+			return new self::$strCollectionClass($objModel);			
+		}
+		else 
+		{
+			return new static($strTable, $objModel);
+		}
+	}
+	
+	
+	/**
+	 * clone the model
+	 */
+	public function __clone()
+	{
+		$this->objModel = clone $this->objModel;
+	}
+	
+
+	/**
 	 * get model data
 	 * 
 	 * @param string key
@@ -72,16 +134,7 @@ class VersioningModel extends Controller
 		return $this->objModel->$strKey;
 	}
 	
-	
-	/**
-	 * clone the model
-	 */
-	public function __clone()
-	{
-		$this->objModel = clone $this->objModel;
-	}
-	
-	
+		
 	/**
 	 * check if model argument isset 
 	 * 
@@ -118,6 +171,25 @@ class VersioningModel extends Controller
 	
 	
 	/**
+	 * get related also create a versioning model
+	 * 
+	 * @param string
+	 * @return VersioiningModel|null
+	 */
+	public function getRelated($strKey)
+	{
+		$objReturn = $this->objModel->getRelated($strKey);
+		
+		if($objReturn === null)
+		{
+			return null;
+		}
+		
+		return new static($this->objModel->getTable(), $objReturn);
+	}
+	
+	
+	/**
 	 * save model and create model
 	 * 
 	 * @param bool force to inset
@@ -125,9 +197,9 @@ class VersioningModel extends Controller
 	 */
 	public function save($blnForceInsert=false, $blnIgnoreVersioning=false)
 	{
-		$blnVersioning = !$blnIgnoreVersioning && $GLOBALS['TL_DCA'][$strTable]['config']['enableVersioning'];
 		$strTable = $this->objModel->getTable();
 		$strPk = $this->objModel->getPk();
+		$blnVersioning = $this->blnVersioning && !$blnIgnoreVersioning && $GLOBALS['TL_DCA'][$strTable]['config']['enableVersioning'];
 		
 		if($blnVersioning && !$blnForceInsert && isset($this->$strPk))
 		{
@@ -142,6 +214,17 @@ class VersioningModel extends Controller
 		}
 		
 		return $this;
+	}
+	
+	
+	/**
+	 * activate or deactive versioning
+	 * 
+	 * @paranm bool
+	 */
+	public function setVersioning($blnEnable)
+	{
+		$this->blnVersioning = (bool) $blnEnable;
 	}
 	
 }

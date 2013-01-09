@@ -21,7 +21,10 @@ ClassLoader::addClasses(array
 	
 	// models
 	'DraftsModel' 											=> 'system/modules/drafts/models/DraftsModel.php',
+	'Netzmacht\Drafts\Model\VersioningCollection'			=> 'system/modules/drafts/models/VersioningCollection.php',
 	'Netzmacht\Drafts\Model\VersioningModel' 				=> 'system/modules/drafts/models/VersioningModel.php',
+	'Netzmacht\Drafts\Model\DraftableCollection'			=> 'system/modules/drafts/models/DraftableCollection.php',
+	'Netzmacht\Drafts\Model\DraftableModel' 				=> 'system/modules/drafts/models/DraftableModel.php',
 	
 	// modules
 	'ModuleTasks' 											=> 'system/modules/drafts/modules/ModuleTasks.php',

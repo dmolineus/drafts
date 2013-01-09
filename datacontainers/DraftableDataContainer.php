@@ -13,7 +13,7 @@
  **/
 
 namespace Netzmacht\Drafts\DataContainer;
-use Netzmacht\Drafts\Model\VersioningModel,	Input, DraftsModel,	DC_Table, Contao\Database\Mysql\Result;
+use Netzmacht\Drafts\Model\DraftableModel, Input, DraftsModel, DC_Table, Contao\Database\Mysql\Result;
 
 
 // initialize draft modules
@@ -56,12 +56,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected $strAction;
 	
-	/**
-	 * current action
-	 * @param string
-	 */
-	protected $strModel;
-	
 	
 	/**
 	 * constructor sets draft mode
@@ -73,7 +67,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		parent::__construct();
 		
 		$this->blnDraftMode = Input::get('draft') == '1';
-		$this->strModel = $this->getModelClassFromTable($this->strTable);
 		$this->strAction = Input::get('act') == '' ? Input::get('key') : Input::get('act');
 		
 		if(Input::get('tid') != null)
@@ -106,12 +99,10 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function applyDraft($objDc, $objModel = null, $blnDoNoRedirect=false)
 	{
-		$strModel = $this->strModel;
-		
 		if($objModel === null)
 		{
 			$this->initialize();		
-			$objModel = $strModel::findByPK($this->intId);
+			$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
 
 			if($objModel === null)
 			{
@@ -120,10 +111,10 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			}
 		}
 		
-		$objOriginal = $objModel->getRelated('draftRelated');
+		$objOriginal = $objModel->getRelated();
 
 		// delete original will also delete draft
-		if($this->hasState($objModel, 'delete'))
+		if($objModel->hasState('delete'))
 		{
 			$this->switchMode($objModel->draftRelated, 'delete');
 			$dc = new DC_Table($this->strTable);
@@ -132,9 +123,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		// create new original
-		elseif($this->hasState($objModel, 'new'))
+		elseif($objModel->hasState('new'))
 		{
-			$objNew = $this->prepareModel($objModel, false, true, true);
+			$objNew = $objModel->prepareCopy(false, true, true);
 			$objNew->save(true);
 			
 			$objModel->draftState = 0;
@@ -148,21 +139,21 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			$blnSave = false;
 		
 			// apply changes 
-			if($this->hasState($objModel, 'modified'))
+			if($objModel->hasState('modified'))
 			{
-				$objNew = $this->prepareModel($objModel, false);
+				$objNew = $objModel->prepareCopy(false);
 				$objNew->save();
 			}
 			
 			// apply new sorting
-			if($this->hasState($objModel, 'sorted'))
+			if($objModel->hasState('sorted'))
 			{
 				$objOriginal->sorting = $objModel->sorting;
 				$blnSave = true;
 			}
 			
 			// apply new visibility
-			if($this->hasState($objModel, 'visibility'))
+			if($objModel->hasState('visibility'))
 			{
 				$objOriginal->invisible = $objModel->invisible;
 				$blnSave = true;
@@ -170,7 +161,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			if($blnSave)
 			{
-				$objOriginal = new VersioningModel($objOriginal);
+				$objOriginal->setVersioning(true);
 				$objOriginal->tstamp = time();
 				$objOriginal->save();
 			}
@@ -304,7 +295,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 
 			while($objResult->next())
 			{
-				$objModel = new $this->strModel($objResult);
+				$objModel = new DraftableModel($this->strTable, $objResult);
 				$this->applyDraft($objDc, $objModel, true);
 			}
 			
@@ -327,7 +318,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 
 			while($objResult->next())
 			{
-				$objModel = new $this->strModel($objResult);
+				$objModel = new DraftableModel($this->strTable, $objResult);
 				$this->resetDraft($objDc, $objModel, true);
 			}
 			
@@ -335,7 +326,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		// not possible to use delete all drafts at the moment
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['notDeletable'] = true;		
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['notDeletable'] = true;	
 		$strBuffer = '<input type="submit" class="tl_submit" name="resetDrafts" value="' . $GLOBALS['TL_LANG'][$this->strTable]['resetDrafts'] . '">';
 		
 		if($this->hasAccessOnPublished())
@@ -516,10 +507,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// label copied element as new
 		if(!$this->blnDraftMode && $this->objDraft !== null)
 		{
-			$strModel = $this->strModel;
-			$objModel = $strModel::findByPK($insertID);
+			$objModel = DraftableModel::findByPK($this->strTable, $insertID);
 			
-			$objNew = $this->prepareModel($objModel, true, true, true);
+			$objNew = $objModel->prepareCopy(true, true, true);
 			$objNew->save();
 			
 			$objModel->draftRelated = $objNew->id;
@@ -541,11 +531,15 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// create draft
 		if(!$this->blnDraftMode && $this->objDraft !== null)
 		{
-			$objModel = $this->prepareModel($arrSet, true);
-			$objModel->save();
+			$objModel = new DraftableModel($this->strTable);
+			$objModel->setRow($arrSet);
 			
-			$arrSet = array('draftRelated' => $objModel->id, 'tstamp' => time());
-			$this->Database->prepare('UPDATE ' . $this->strTable . ' %s WHERE id=?')->set($arrSet)->execute($intId);
+			$objNew = $objModel->prepareCopy(true, true, true);
+			$objNew->save(true);
+			
+			$objModel->draftRelated = $objNew->id;
+			$objModel->tstamp = time();
+			$objModel->save();
 		}
 	}
 	
@@ -563,7 +557,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			return;
 		}
 
-		$strQuery 	= 'SELECT t.id, t.draftState, t.sorting FROM ' . $this->strTable . ' t'
+		$strQuery 	= 'SELECT t.id, t.draftState, j.sorting FROM ' . $this->strTable . ' t'
 					. ' LEFT JOIN ' . $this->strTable . ' j ON j.id = t.draftRelated'
 					. ' WHERE t.pid=? AND t.ptable=? AND t.sorting != j.sorting';
 							
@@ -575,11 +569,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		while($objResult->next()) 
-		{
-			$arrSet = array();
-			
-			$objModel = new VersioningModel(new $this->strModel($objResult));
-			$objModel->sorting = $objResult->sorting;			
+		{		
+			$objModel = new DraftableModel($this->strTable, $objResult, true);
 			$objModel->tstamp = time();
 			$objModel->save();
 		}
@@ -602,16 +593,20 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				return;
 			}
 			
-			$objModel = new $this->strModel($objDc->activeRecord);
+			$objModel = new DraftableModel($this->strTable, $objDc->activeRecord);
 
 			// delete new elements
-			if($this->hasState($objModel, 'new'))
+			if($objModel->hasState('new'))
 			{
 				return;
 			}
-			elseif(!$this->removeState($objModel, 'delete'))
+			elseif($objModel->hasState('delete'))
 			{
-				$this->setState($objModel, 'delete');
+				$objModel->removeState('delete');
+			}
+			else 
+			{
+				$objModel->setState('delete');
 			}
 			
 			$objModel->save();
@@ -636,8 +631,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			// store draft in tl_undo
 			// TODO: handle ctable elements
-			$strModel = $this->strModel;
-			$objSave = $strModel::findOneBy('draftRelated', $objDc->id);
+			$objSave = DraftableModel::findOneBy($this->strTable, 'draftRelated', $objDc->id);
 			
 			if($objSave === null)
 			{
@@ -683,8 +677,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			if($objResult->numRows == 1 && $objResult->draftRelated > 0)
 			{
-				$strModel = $this->strModel;
-				$objModel = $this->prepareModel($strModel::findByPK($intId), true);
+				$objModel = DraftableModel::findByPK($this->strTable, $intId)->prepareCopy(true); 
 				$objModel->save();
 			}
 		}
@@ -702,17 +695,17 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			return;
 		}
 
+		$objModel = new DraftableModel($this->strTable, $objDc->activeRecord);
+		
 		// update label
 		if($this->blnDraftMode)
 		{
-			$objModel = new $this->strModel($objDc->activeRecord);
-			
-			if($this->hasState($objModel, 'new') || $this->hasState($objModel, 'modified'))
+			if($objModel->hasState('new') || $objModel->hasState('modified'))
 			{
 				return;
 			}
 			
-			$this->setState($objModel, 'modified');
+			$objModel->setState('modified');
 			$objModel->tstamp = time();
 			$objModel->save();
 		}
@@ -722,8 +715,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		{
 			if($objDc->activeRecord->draftRelated != null)
 			{
-				$objModel = $this->prepareModel($objDc->activeRecord, true);
-				$objModel->save();
+				$objNew = $objModel->prepareCopy(true);
+				$objNew->save();
 			}
 		}
 	}
@@ -738,13 +731,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function onToggleVisibility($blnVisible, $objDc)
 	{
-		$strModel = $this->strModel;
-		
 		if($this->blnDraftMode)
 		{
-			$objModel = $strModel::findByPK($this->intId);
+			$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
 
-			if($blnVisible == ($objModel->invisible == '1') || $this->hasState($objModel, 'visibility'))
+			if($blnVisible == ($objModel->invisible == '1') || $objModel->hasState('visibility'))
 			{
 				return $blnVisible;
 			}
@@ -766,11 +757,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		
 		if($this->objDraft !== null)
 		{
-			$objModel = $strModel::findOneBy($strField, $strField == 'id' ? $objDc->activeRecord->draftRelated : $this->intId);
+			$objModel = DraftableModel::findOneBy($this->strTable, $strField, $strField == 'id' ? $objDc->activeRecord->draftRelated : $this->intId);
 			
 			if($objModel !== null && $blnVisible != $objModel->invisible)
 			{
-				$objModel = new VersioningModel($objModel);
+				$objModel->setVersioning(true);
 				$objModel->invisible = $blnVisible;
 				$objModel->tstamp = time();
 				$objModel->save();
@@ -788,14 +779,12 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function resetDraft($objDc, $objModel = null, $blnDoNoRedirect=false)
 	{
-		$strModel = $this->strModel;
-		
 		// try to find model
 		if($objModel === null)
 		{
 			$this->initialize();
-			$objModel = $strModel::findByPK($this->intId);
-			
+			$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
+
 			if($objModel === null)
 			{
 				$this->triggerError('Invalid approach to reset draft. No draft found', 'resetDraft', $blnDoNoRedirect);
@@ -803,19 +792,19 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			}
 		}
 
-		$objModel = new VersioningModel($objModel);
-		$objOriginal = $objModel->getRelated('draftRelated');
+		$objModel->setVersioning(true);
+		$objOriginal = $objModel->getRelated();
 		$blnSave = false;
 
 		// modified draft, reset to original
-		if($this->hasState($objModel, 'modified')) 
+		if($objModel->hasState('modified')) 
 		{
-			$objNew = $this->prepareModel($objOriginal, true);
+			$objNew = $objOriginal->prepareCopy(true);
 			$objNew->save();
 		}
 		
 		// delete new one
-		elseif($this->hasState($objModel, 'new'))
+		elseif($objModel->hasState('new'))
 		{
 			// use existing driver
 			if($this->intId == $objModel->id)
@@ -836,20 +825,20 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		else
 		{
 			// just reset draft state
-			if($this->hasState($objModel, 'delete') || $objOriginal === null)
+			if($objModel->hasState('delete') || $objOriginal === null)
 			{
 				$blnSave = true;
 			}
 			
 			// sorting changed, reset to original
-			elseif($this->hasState($objModel, 'sorted')) 
+			elseif($objModel->hasState('sorted')) 
 			{
 				$objModel->sorting = $objOriginal->sorting;
 				$blnSave = true;
 			}
 			
 			// sorting changed, reset to original
-			elseif($this->hasState($objModel, 'visibility')) 
+			elseif($objModel->hasState('visibility')) 
 			{
 				$objModel->invisible = $objOriginal->invisible;
 				$blnSave = true;
@@ -884,15 +873,15 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected function buttonRuleDraftState(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		$objModel = new $this->strModel();
+		$objModel = new DraftableModel($this->strTable);
 		$objModel->setRow($arrRow);
 		
 		if(isset($arrAttributes['modified']))
 		{
-			return  $this->hasState($objModel, 'modified');
+			return  $objModel->hasState('modified');
 		}
 		
-		return $objModel->draftState > 0 || $this->hasState($objModel, 'new') || $this->hasState($objModel, 'sorted') || $this->hasState($objModel, 'visibility');
+		return $objModel->draftState > 0 || $objModel->hasState('new') || $objModel->hasState('sorted') || $objModel->hasState('visibility');
 	}
 	
 	
@@ -1046,33 +1035,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		return false;
 	}
 
-
-	/**
-	 * get state flag 
-	 * 
-	 * @param string state
-	 * @return int
-	 */
-	protected function getStateFlag($strState)
-	{
-		switch ($strState) 
-		{
-			case 'modified':
-				$intFlag = 1;
-				break;
-			
-			case 'delete':
-				$intFlag = 2;
-				break;
-				
-			default:
-				$intFlag = 0;
-				break;
-		}
-		
-		return $intFlag;
-	}
-
 	
 	/**
 	 * check if user has accesss on published content
@@ -1082,42 +1044,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	protected function hasAccessOnPublished()
 	{
 		return $this->User->hasAccess($this->strTable . '::published', 'alexf');		
-	}
-	
-
-	/**
-	 * check if model has a state
-	 * 
-	 * @param Model
-	 * @param string 
-	 */
-	protected function hasState($objModel, $strState)
-	{
-		switch($strState)
-		{
-			case 'new':
-				return $objModel->draftRelated === null;
-				break;
-			
-			case 'sorted':
-				return !$this->hasState($objModel, 'new') && ($objModel->getRelated('draftRelated')->sorting != $objModel->sorting);
-				break;
-			
-			case 'visibility':
-				return !$this->hasState($objModel, 'new') && ($objModel->getRelated('draftRelated')->invisible != $objModel->invisible);
-				break;
-				
-			default:
-				$intFlag = $this->getStateFlag($strState);
-				break;
-		}
-		
-		if($intFlag == 0)
-		{
-			return false;
-		}
-		
-		return $objModel->draftState & $intFlag;
 	}
 	
 	
@@ -1166,9 +1092,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				
 				while($objResult->next())
 				{
-					$objModel = new $this->strModel($objResult);
+					$objModel = new DraftableModel($this->strTable, $objResult);
 					
-					$objNew = $this->prepareModel($objModel, true);
+					$objNew = $objModel->prepareCopy(true);
 					$objNew->save(true);
 					
 					$objModel->draftRelated = $objNew->id;
@@ -1281,8 +1207,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected function permissionRuleDraftPermission($objDc, &$arrAttributes, &$strError)
 	{
-		$strModel = $this->strModel;
-		
 		// Live mode
 		
 		// permission is already granted by default dca checkPermission 
@@ -1351,7 +1275,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			$tid = '';
 			if(Input::get('tid'))
 			{
-				$objModel = $strModel::findOneBy('draftRelated', Input::get('tid'));
+				$objModel = DraftableModel::findOneBy($this->strTable, 'draftRelated', Input::get('tid'));
 				
 				if($objModel !== null)
 				{
@@ -1367,21 +1291,13 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 
 		// check permission for child element
-		$objDraft = $strModel::findByPK($this->intId);
-		$objModel = $strModel::findByPK($objDraft->draftRelated);
+		$objDraft = DraftableModel::findByPK($this->strTable, $this->intId);
+		$objModel = $objDraft->getRelated();
 		
 		if($objModel === null)
 		{
-			if($this->hasState($objDraft, 'new'))
+			if($objDraft->hasState('new'))
 			{
-				return true;
-			}
-			
-			if($this->strAction != 'paste' && !($this->strAction == 'create' && Input::get('mode') != '') && $this->strAction != 'copy')
-			{
-				$this->setState($objDraft, 'new');
-				$objDraft->tstamp = time();
-				$objDraft->save();
 				return true;
 			}
 			
@@ -1391,7 +1307,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// fake ids to run original check permission method
 		Input::setGet('id', $objModel->id);
 		$intPid = Input::get('pid');
-
 		
 		if($intPid !== null)
 		{
@@ -1401,7 +1316,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			}
 			else 
 			{
-				$objModel = $strModel::findOneBy('draftRelated', $intPid);
+				$objModel = DraftableModel::findOneBy($this->strTable, 'draftRelated', $intPid);
 				
 				if($objModel !== null)
 				{
@@ -1426,109 +1341,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		return true;
-	}
-
-
-	/**
-	 * create a new model by cloning a reference and replace
-	 * 
-	 * @param \Model|array model or result array
-	 * @param bool true if new model is a draft
-	 * @param bool switch id and draftRelated
-	 * @param bool true if forcing a new model 
-	 * @param bool true is versioning shall be used
-	 */
-	protected function prepareModel($objCopy, $blnDraft=false, $blnSwitchIds=true, $blnNew=false, $blnVersioning=true)
-	{
-		if(is_array($objCopy))
-		{
-			$objNew = new $this->strModel();
-			$objNew->setRow($objCopy);
-		}
-		elseif($objCopy instanceof Result)
-		{
-			$objNew = new $this->strModel($objCopy);
-		}
-		else
-		{
-			$objNew = clone $objCopy;
-		}
-		
-		// versioning
-		if($blnVersioning && !$objNew instanceof VersioningModel)
-		{
-				$objNew = new VersioningModel($objNew);
-		}
-		elseif(!$blnVersioning && $objNew instanceof VersioningModel)
-		{
-			$objNew = $objNew->getModel();
-		}
-		
-		// id and draft related
-		if($blnSwitchIds)
-		{
-			$objNew->id = $blnNew ? null : $objCopy->draftRelated;
-			$objNew->draftRelated = $objCopy->id;
-		}
-		elseif($blnNew)
-		{
-			$objNew->id = null;
-		}
-		
-		// pid and ptable
-		if($blnDraft)
-		{
-			$objNew->pid = $this->objDraft->id;
-			$objNew->ptable = 'tl_drafts';
-		}
-		else
-		{
-			$objNew->pid = $this->objDraft->pid;
-			$objNew->ptable = $this->objDraft->ptable;
-		}
-		
-		// empty draft state
-		if(!$blnDraft)
-		{
-			$objNew->draftState = 0;
-		}
-		
-		$objNew->tstamp = time();
-		return $objNew;
-	}
-
-
-	/**
-	 * semove state from model
-	 * 
-	 * @param Model
-	 * @param string
-	 * @return bool
-	 */
-	protected function removeState($objModel, $strState)
-	{
-		if(!$this->hasState($objModel, $strState))
-		{
-			$objModel->draftState &= ~$this->getStateFlag($strState);
-			return true;
-		}
-		
-		return false;
-	}
-
-
-	/**
-	 * set state of model
-	 * 
-	 * @param Model
-	 * @param string 
-	 */
-	protected function setState($objModel, $strState)
-	{
-		if(!$this->hasState($objModel, $strState))
-		{
-			$objModel->draftState |= $this->getStateFlag($strState);
-		}
 	}
 
 

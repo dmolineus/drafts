@@ -13,6 +13,7 @@
  **/
  
 namespace Netzmacht\Drafts\DataContainer;
+use Netzmacht\Drafts\Model\DraftableModel;
 
 
 /**
@@ -72,30 +73,30 @@ class Content extends DraftableDataContainer
 		
 		// Generate labels
 		$arrState = array();
-		$objModel = new $this->strModel();
+		$objModel = new DraftableModel($this->strTable);
 		$objModel->setRow($arrRow);
-		if ($this->hasState($objModel, 'new'))
+		if ($objModel->hasState('new'))
 		{
 			$arrState[] = 'new';
 		}
 		else
 		{
-			if($this->hasState($objModel, 'modified'))
+			if($objModel->hasState('modified'))
 			{
 				$arrState[] = 'modified';
 			}
 			
-			if($this->hasState($objModel, 'sorted'))
+			if($objModel->hasState('sorted'))
 			{
 				$arrState[] = 'sorted';
 			}
 			
-			if($this->hasState($objModel, 'delete'))
+			if($objModel->hasState('delete'))
 			{
 				$arrState[] = 'delete';
 			}
 			
-			if($this->hasState($objModel, 'visibility'))
+			if($objModel->hasState('visibility'))
 			{
 				$arrState[] = 'visibility';
 			}
@@ -104,15 +105,16 @@ class Content extends DraftableDataContainer
 		static $blnLabelsRendered = false;
 		$strLabels = '';
 		
+		if(!$blnLabelsRendered)
+		{
+			$strLabels = '<script>var DraftLabels = { sorted: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_sorted'] . '\''
+						.', visibility: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_visibility'] .  '\'};</script>';
+			$blnLabelsRendered = true;
+		}
+		
 		// pass draft labels as javascript
 		if(!empty($arrState))
 		{
-			if(!$blnLabelsRendered)
-			{
-				$strLabels = '<script>var DraftLabels = { sorted: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_sorted'] . '\''
-							.', visibility: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_visibility'] .  '\'};</script>';
-				$blnLabelsRendered = true;
-			}
 			
 			asort($arrState);
 			foreach ($arrState as $strState) 
