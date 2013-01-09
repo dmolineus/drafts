@@ -12,6 +12,7 @@
  *  
  **/
 
-$GLOBALS['MSC']['draftModesLabel'] = 'Modus:';
-$GLOBALS['MSC']['draftModes'][0] = 'Livemodus';
-$GLOBALS['MSC']['draftModes'][1] = 'Entwurfsmodus';
+
+// tasks
+$GLOBALS['TL_LANG']['tl_drafts']['draftTaskTitle'] = '%s ID %s: %s';
+$GLOBALS['TL_LANG']['tl_drafts']['draftTaskNoTitle'] = 'no title';

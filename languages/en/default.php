@@ -12,6 +12,6 @@
  *  
  **/
 
-$GLOBALS['MSC']['draftModesLabel'] = 'Modus:';
-$GLOBALS['MSC']['draftModes'][0] = 'Livemodus';
-$GLOBALS['MSC']['draftModes'][1] = 'Entwurfsmodus';
+$GLOBALS['MSC']['draftModesLabel'] = 'Mode:';
+$GLOBALS['MSC']['draftModes'][0] = 'live mode';
+$GLOBALS['MSC']['draftModes'][1] = 'draft mode';

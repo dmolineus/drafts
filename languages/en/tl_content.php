@@ -18,10 +18,13 @@ $GLOBALS['TL_LANG']['tl_content']['livemodewarning'][1] = 'Your are in the live 
 $GLOBALS['TL_LANG']['tl_content']['livemodewarning'][2] = 'Your are in the live mode. Changes will affect the live version.';
 
 // buttons
-$GLOBALS['TL_LANG']['tl_content']['draftmode'][0] = 'Draft mode';
-$GLOBALS['TL_LANG']['tl_content']['draftmode'][1] = 'Switch to draft mode';
-$GLOBALS['TL_LANG']['tl_content']['livemode'][0] = 'Live mode';
-$GLOBALS['TL_LANG']['tl_content']['livemode'][1] = 'Switch to live mode';
+$GLOBALS['TL_LANG']['tl_content']['draftmode'][0] 		= 'Draft mode';
+$GLOBALS['TL_LANG']['tl_content']['draftmode'][1]		= 'Switch to draft mode';
+$GLOBALS['TL_LANG']['tl_content']['livemode'][0] 		= 'Live mode';
+$GLOBALS['TL_LANG']['tl_content']['livemode'][1] 		= 'Switch to live mode';
+$GLOBALS['TL_LANG']['tl_content']['task'][0] 			= 'Edit Task';
+$GLOBALS['TL_LANG']['tl_content']['task'][1] 			= 'Publish or change request';
+$GLOBALS['TL_LANG']['tl_content']['task'][2]			= 'Save task';
 
 $GLOBALS['TL_LANG']['tl_content']['draftApply'][0]		= 'Apply draft';
 $GLOBALS['TL_LANG']['tl_content']['draftApply'][1]		= 'Apply changes of draft';
