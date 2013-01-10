@@ -13,7 +13,7 @@
  **/
  
 namespace Netzmacht\Drafts\Model;
-use Controller, Model, Model\Collection;
+use Controller, Model, Model\Collection, Database\Result;
 
 /**
  * Versioning Model allows to save model and use the versioning of contao
@@ -44,23 +44,33 @@ class VersioningModel extends Controller
 	
 	
 	/**
-	 * set model
+	 * create a new model, possible calls
+	 * $obj = new VersioningModel('tl_content');
+	 * $obj = new VersioningModel($objModel);
+	 * $obj = new VersioningModel($objResult, true, 'tl_content');
 	 * 
-	 * @param string
-	 * @param \Model
+	 * @param \Model|Result|string
 	 * @param bool
+	 * @param string
 	 */
-	public function __construct($strTable, $objModel=null, $blnVersioning=true)
+	public function __construct($objModel, $blnVersioning=true, $strTable=null)
 	{
 		parent::__construct();
 		
-		if(!$objModel instanceof Model)
+		// create empty model
+		if(is_string($objModel))
+		{
+			$strClass = $this->getModelClassFromTable($objModel);
+			$objModel = new $strClass();
+		}
+		
+		elseif($objModel instanceof Result)
 		{
 			$strClass = $this->getModelClassFromTable($strTable);
 			$objModel = new $strClass($objModel);
 		}
 		
-		$this->blnVersioning = true;
+		$this->blnVersioning = $blnVersioning;
 		$this->objModel = $objModel;		
 		$this->import('Database');
 	}
@@ -104,7 +114,7 @@ class VersioningModel extends Controller
 		}
 		else 
 		{
-			return new static($strTable, $objModel);
+			return new static($objModel);
 		}
 	}
 	
@@ -185,7 +195,7 @@ class VersioningModel extends Controller
 			return null;
 		}
 		
-		return new static($this->objModel->getTable(), $objReturn);
+		return new static($objReturn);
 	}
 	
 	
@@ -200,7 +210,7 @@ class VersioningModel extends Controller
 		$strTable = $this->objModel->getTable();
 		$strPk = $this->objModel->getPk();
 		$blnVersioning = $this->blnVersioning && !$blnIgnoreVersioning && $GLOBALS['TL_DCA'][$strTable]['config']['enableVersioning'];
-		
+
 		if($blnVersioning && !$blnForceInsert && isset($this->$strPk))
 		{
 			$this->createInitialVersion($strTable, $this->$strPk);

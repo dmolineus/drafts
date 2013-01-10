@@ -11,8 +11,6 @@
  * @copyright Copyright 2012 David Molineus netzmacht creative 
  *  
  **/
- 
-namespace Netzmacht\Drafts\DataContainer;
 
 $GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] .= ';{drafts_legend},draftModules,draftModeAsDefault,draftUseTaskModule,draftTaskDefaultDeadline';
 

@@ -295,7 +295,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 
 			while($objResult->next())
 			{
-				$objModel = new DraftableModel($this->strTable, $objResult);
+				$objModel = new DraftableModel($objResult, false, $this->strTable);
 				$this->applyDraft($objDc, $objModel, true);
 			}
 			
@@ -318,7 +318,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 
 			while($objResult->next())
 			{
-				$objModel = new DraftableModel($this->strTable, $objResult);
+				$objModel = new DraftableModel($objResult, false, $this->strTable);
 				$this->resetDraft($objDc, $objModel, true);
 			}
 			
@@ -533,6 +533,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		{
 			$objModel = new DraftableModel($this->strTable);
 			$objModel->setRow($arrSet);
+			$objModel->id = $intId;
 			
 			$objNew = $objModel->prepareCopy(true, true, true);
 			$objNew->save(true);
@@ -551,7 +552,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 * @return void
 	 */
 	public function onCut($objDc)
-	{
+	{	
 		if($this->objDraft === null || $this->blnDraftMode)
 		{
 			return;
@@ -570,9 +571,103 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		
 		while($objResult->next()) 
 		{		
-			$objModel = new DraftableModel($this->strTable, $objResult, true);
+			$objModel = new DraftableModel($objResult, true, $this->strTable);
 			$objModel->tstamp = time();
 			$objModel->save();
+		}
+	}
+	
+	
+	/**
+	 * detect if models/drafts has moved to new parent and handle drafts
+	 * Callback is called for every record, not only for enabled draft record
+	 * 
+	 * @param DC_Table 
+	 */
+	public function onCutDetectNewParents($objDc)
+	{
+		$objModel = DraftableModel::findByPK($this->strTable, $objDc->id);
+		
+		// it should not be possible to insert into another drafts
+		if($objModel->ptable == 'tl_drafts')
+		{
+			return;
+		}
+		
+		$objRelated = $objModel->getRelated();
+		
+		// no related exists, everything is fine
+		if($objRelated === null)
+		{
+			return;
+		}	
+		
+		// both are no drafts, draft was move into a live place
+		if($objRelated->ptable != 'tl_drafts' && $objModel->ptable != 'tl_drafts')
+		{
+			// create new draft for formerly related
+			$objNewDrafts = \DraftsModel::findOneByPidAndTable($objRelated->pid, $objRelated->ptable);
+			$objRelated->draftRelated = null;
+			$objModel->draftRelated = null;
+			$objModel->save();
+			
+			if($objNewDrafts !== null)
+			{
+				$objNew = $objRelated->prepareCopy(true);
+				$objNew->sorting = $objRelated->sorting;
+				$objNew->setState('delete');
+				$objNew->save(true);
+				
+				$objRelated->draftRelated = $objNew->id;
+				$objRelated->setVersioning(false);
+			}
+			
+			$objRelated->save();
+			
+			// create new draft for model
+			$objNewDrafts = \DraftsModel::findOneByPidAndTable($objModel->pid, $objModel->ptable);
+			
+			if($objNewDrafts !== null)
+			{
+				
+				$objNew = clone $objRelated;
+				$objNew->draftRelated = $objModel->id;
+				$objNew->ptable = 'tl_drafts';
+				$objNew->pid = $objNewDrafts->id;
+				$objNew->sorting = $objModel->sorting;
+				$objNew->save(true);
+				
+				$objModel->draftRelated = $objNew->id;
+				$objModel->setVersioning(false);
+				$objModel->save();
+			}
+		}
+		
+		// also move draft to new place
+		elseif($objRelated->ptable == 'tl_drafts')
+		{
+			$objDrafts = \DraftsModel::findByPK($objRelated->pid);
+		
+			// model has not moved to new parent
+			if($objModel->pid == $objDrafts->pid && $objModel->ptable == $objDrafts->ptable)
+			{
+				return;
+			}
+	
+			$objNewDrafts = \DraftsModel::findOneByPidAndTable($objModel->pid, $objModel->ptable);
+				
+			// new parent has also a draft
+			if($objNewDrafts !== null)
+			{
+				$objRelated->pid = $objNewDrafts->id;
+				$objRelated->ptable = 'tl_drafts';
+				$objRelated->sorting = $objModel->sorting;
+				$objRelated->save();
+			}
+			else 
+			{
+				$objRelated->delete();					
+			}
 		}
 	}
 	
@@ -593,7 +688,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				return;
 			}
 			
-			$objModel = new DraftableModel($this->strTable, $objDc->activeRecord);
+			$objModel = new DraftableModel($objDc->activeRecord, false, $this->strTable);
 
 			// delete new elements
 			if($objModel->hasState('new'))
@@ -722,7 +817,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			return;
 		}
 
-		$objModel = new DraftableModel($this->strTable, $objDc->activeRecord);
+		$objModel = new DraftableModel($objDc->activeRecord, false, $this->strTable);
 		
 		// update label
 		if($this->blnDraftMode)
@@ -760,6 +855,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	{
 		if($this->blnDraftMode)
 		{
+			return $blnVisible;
 			$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
 
 			if($blnVisible == ($objModel->invisible == '1') || $objModel->hasState('visibility'))
@@ -818,7 +914,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				return;
 			}
 		}
-
+		elseif(!$objModel instanceof DraftableModel)
+		{
+			$objModel = new DraftableModel($objModel, false, $this->strTable);
+		}
+		
 		$objModel->setVersioning(true);
 		$objOriginal = $objModel->getRelated();
 		$blnSave = false;
@@ -939,7 +1039,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			return $blnAccess;
 		}
 		
-		$arrAttributes['value'] = !$blnAccess;
+		$arrAttributes['value'] = $blnAccess;
 		
 		return $this->buttonRuleDisableIcon($strButton, $strHref, $strLabel, $strTitle, $strIcon, $strAttributes, $arrAttributes);
 	}
@@ -968,11 +1068,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		
 		if(isset($arrAttributes['draft']))
 		{
-			$strHref .= '&table=' . $this->strTable . (($this->objDraft === null) ? ('&mode=create&id=' . $this->intId) : ('&id=' . $this->objDraft->id));
+			$strHref .= '&amp;table=' . $this->strTable . (($this->objDraft === null) ? ('&amp;mode=create&amp;id=' . $this->intId) : ('&amp;id=' . $this->objDraft->id));
 			return true;
 		}
 
-		$strHref .= '&table=' . $this->strTable . '&id=' . $this->objDraft->pid;
+		$strHref .= '&amp;table=' . $this->strTable . '&amp;id=' . $this->objDraft->pid;
 		return true;
 	}
 	
@@ -991,7 +1091,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected function buttonRuleTaskButton(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		if($this->objDraft === null || !in_array('tasks', $this->Config->getActiveModules()) || !$GLOBALS['TL_CONFIG']['draftsUseTaskModule'])
+		if($this->objDraft === null || !in_array('tasks', $this->Config->getActiveModules()) || !$GLOBALS['TL_CONFIG']['draftUseTaskModule'])
 		{
 			return false;
 		}
@@ -1054,11 +1154,13 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				$this->objDraft->module = Input::get('do');
 				$this->objDraft->save();
 
-				$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ptable=?')->execute($this->objDraft->pid, $this->objDraft->ptable);
-				
+				// btw: Why does COntao not just update every empty ptable of tl_content to tl_article???
+				$strFoo = ($this->objDraft->ptable == 'tl_article' ? '(ptable=? OR ptable=\'\')' : 'ptable=?');
+				$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ' . $strFoo)->execute($this->objDraft->pid, $this->objDraft->ptable);
+
 				while($objResult->next())
 				{
-					$objModel = new DraftableModel($this->strTable, $objResult);
+					$objModel = new DraftableModel($objResult, true, $this->strTable);
 
 					$objNew = $objModel->prepareCopy(true);
 					$objNew->pid = $this->objDraft->id;

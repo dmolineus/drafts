@@ -13,7 +13,7 @@
  **/
 
 namespace Netzmacht\Drafts\Model;
-
+use Model;
 
 /**
  * DraftableModel provides a common interface which can handle draft features
@@ -39,8 +39,20 @@ class DraftableModel extends VersioningModel
 	 * @param bool enable versioning
 	 * @throws \Exception if table is not draftable
 	 */
-	public function __construct($strTable, $objModel=null, $blnVersioning=false)
+	public function __construct($objModel, $blnVersioning=false, $strTable=null)
 	{
+		if($strTable === null)
+		{
+			if($objModel instanceof Model)
+			{
+				$strTable = $objModel->getTable();
+			}
+			else
+			{
+				$strTable = $objModel;
+			}
+		}
+		
 		$this->loadDataContainer($strTable);
 		
 		if(!isset($GLOBALS['TL_DCA'][$strTable]['fields']['draftRelated']))
@@ -48,7 +60,7 @@ class DraftableModel extends VersioningModel
 			throw new \Exception('Table "' . $strTable . '" is not draftable.');
 		}
 		
-		parent::__construct($strTable, $objModel, $blnVersioning);
+		parent::__construct($objModel, $blnVersioning, $strTable);
 	}
 	
 	
@@ -70,7 +82,7 @@ class DraftableModel extends VersioningModel
 			return null;
 		}
 		
-		return $this->objModel->getRelated($strKey);		
+		return parent::getRelated($strKey);		
 	}
 	
 	

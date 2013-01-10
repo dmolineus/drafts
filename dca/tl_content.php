@@ -12,7 +12,10 @@
  *  
  **/
 
-$GLOBALS['TL_DCA']['tl_content']['config']['sql']['keys']['draftRelated'] = 'unique';
+ 
+// config
+$GLOBALS['TL_DCA']['tl_content']['config']['oncut_callback'][] 				= array('Netzmacht\Drafts\DataContainer\Content', 'onCutDetectNewParents');
+$GLOBALS['TL_DCA']['tl_content']['config']['sql']['keys']['draftRelated'] 	= 'unique';
 
 // fields
 $GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated'] = array
