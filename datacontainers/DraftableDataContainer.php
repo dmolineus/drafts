@@ -1142,7 +1142,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 
 		// create draft
-		if((Input::get('mode') == 'create' && $this->strAction == null) || (Input::get('draft') == '' && !$this->blnDraftMode && !$this->hasAccessOnPublished() && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] == 1))
+		//  || (Input::get('draft') == '' && !$this->blnDraftMode && !$this->hasAccessOnPublished() && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] == 1) 
+		if((Input::get('mode') == 'create' && $this->strAction == null))
 		{
 			if($this->objDraft === null)
 			{
@@ -1271,7 +1272,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	protected function permissionRuleDraftPermission($objDc, &$arrAttributes, &$strError)
 	{
 		// Live mode
-		
+
 		// permission is already granted by default dca checkPermission 
 		// Prepare permission checking for draft mode
 		if(!$this->blnDraftMode)
@@ -1282,12 +1283,16 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			}
 			
 			$arrPerm = $this->Session->get('draftPermission');
-			if($arrPerm[Input::get('do')][$this->objDraft->ptable] === null || !is_array($arrPerm[Input::get('do')][$this->objDraft->ptable]))
+				
+			if($arrPerm === null)
 			{
-				$arrPerm[Input::get('do')][$this->objDraft->ptable] = array();
+				$arrPerm = array();
 			}
 
-			$arrPerm[Input::get('do')][$this->objDraft->ptable][$this->objDraft->pid] = true;
+			$arrPerm['module'] = $this->objDraft->module;
+			$arrPerm['ptable'] = $this->objDraft->ptable;
+			$arrPerm['pid'] = $this->objDraft->pid;
+			
 			$this->Session->set('draftPermission', $arrPerm);
 			
 			// redirect back to draft mode
@@ -1321,7 +1326,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// only check if no key attribute is given, key checking is rule based
 		// access is stored in session, so check it first
 		$arrPerm = $this->Session->get('draftPermission');
-		if(Input::get('key') != '' || isset($arrPerm[Input::get('do')][$this->objDraft->ptable][$this->objDraft->pid]))
+
+		if(Input::get('key') != '' || (is_array($arrPerm) && $arrPerm['module'] == $this->objDraft->module && $arrPerm['ptable'] == $this->objDraft->ptable && $arrPerm['pid'] == $this->objDraft->pid))
 		{
 			return true;
 		}
