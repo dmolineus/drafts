@@ -65,6 +65,27 @@ class DraftableModel extends VersioningModel
 	
 	
 	/**
+	 * make sure that ptable cannot be empty for contaos behavior handling
+	 * empty ptables
+	 * 
+	 * @param string key
+	 * @param mixed
+	 */
+	public function __get($strKey)
+	{
+		$strValue = parent::__get($strKey);
+		
+		// and again dynamic ptable backwards compatibility
+		if($strKey == 'ptable' && $strValue == '' && $this->objModel->getTable() == 'tl_content')
+		{
+			return 'tl_article';
+		}
+		
+		return $strValue;
+	}
+	
+	
+	/**
 	 * get draftRelated by default and do not throw exception if draft related is not set
 	 * 
 	 * @param string
