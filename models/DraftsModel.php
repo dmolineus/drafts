@@ -35,7 +35,7 @@ class DraftsModel extends Model
 		$t = static::$strTable;
 		$arrColumns = array("$t.pid=? AND $t.ptable=?");
 
-		return static::findOneBy($arrColumns, array($intPid, $strParentTable));
+		return static::findOneBy($arrColumns, array($intPid, $strParentTable == '' ? 'tl_article' : $strParentTable));
 	}
 	
 	
