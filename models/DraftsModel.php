@@ -30,12 +30,12 @@ class DraftsModel extends Model
 	 * 
 	 * @return Model|null 
 	 */
-	public static function findOneByPidAndTable($intPid, $strParentTable)
+	public static function findOneByPidAndTable($intPid, $strParentTable, array $arrOptions=array())
 	{
 		$t = static::$strTable;
 		$arrColumns = array("$t.pid=? AND $t.ptable=?");
 
-		return static::findOneBy($arrColumns, array($intPid, $strParentTable == '' ? 'tl_article' : $strParentTable));
+		return static::findOneBy($arrColumns, array($intPid, $strParentTable == '' ? 'tl_article' : $strParentTable), $arrOptions);
 	}
 	
 	
@@ -47,12 +47,12 @@ class DraftsModel extends Model
 	 * 
 	 * @return Model|null 
 	 */
-	public static function findOneByChildIdAndTable($intId, $strChildTable)
+	public static function findOneByChildIdAndTable($intId, $strChildTable, array $arrOptions=array())
 	{
 		$t = static::$strTable;
 		
 		$arrColumns = array("$t.id=(SELECT pid FROM {$strChildTable} WHERE id=?) AND ptable=?");
-		return static::findOneBy($arrColumns, array($intId, $GLOBALS['TL_DCA'][$strChildTable]['config']['dtable']));
+		return static::findOneBy($arrColumns, array($intId, $GLOBALS['TL_DCA'][$strChildTable]['config']['dtable']), $arrOptions);
 	}
 	
 }
