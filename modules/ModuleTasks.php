@@ -34,7 +34,7 @@ class ModuleTasks extends Contao\ModuleTasks
 	 */
 	protected function checkPermission($objTask, $blnRedirect=false, $strErrorAction='access')
 	{
-		if($GLOBALS['TL_CONFIG']['draftsUseTaskModule'] && $objTask->draftsid > 0)
+		if($GLOBALS['TL_CONFIG']['draftUseTaskModule'] && $objTask->draftsid > 0)
 		{
 			$objDraft = DraftsModel::findByPK($objTask->draftsid);
 			
@@ -45,15 +45,17 @@ class ModuleTasks extends Contao\ModuleTasks
 			}
 			
 			$arrPerm = $this->Session->get('draftPermission');
-
-			if(isset($arrPerm[$objDraft->module][$objDraft->ptable][$objDraft->pid]))
+			
+			if(is_array($arrPerm) && $arrPerm['module'] == $objDraft->module && $arrPerm['ptable'] == $objDraft->ptable && $arrPerm['pid'] == $objDraft->pid)
 			{
 				return true;
 			}
-			elseif(\Input::get('redirect') != '2')
-			{				
+			elseif($blnRedirect && \Input::get('redirect') != '2')
+			{
 				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=task&taskid=%s&rt=%s', $objDraft->module, $objDraft->ctable, $objDraft->pid, $objTask->id, REQUEST_TOKEN));
 			}
+			
+			
 		}
 		elseif($this->User->isAdmin || $this->User->id == $objTask->createdBy)
 		{
