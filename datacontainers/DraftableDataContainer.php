@@ -677,11 +677,10 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		elseif($objModel->ptable == 'tl_drafts')
 		{
 			$objDrafts = \DraftsModel::findByPK($objModel->pid);
-					
+			
 			// model has not moved to new parent
 			if($objRelated->pid == $objDrafts->pid && $objRelated->ptable == $objDrafts->ptable)
 			{
-				echo 'no new parent<br>';
 				return;
 			}
 			
