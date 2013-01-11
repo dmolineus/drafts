@@ -6,7 +6,7 @@
  * @param string strClass
  * @param string strLabel
  */
-function toggleDraftLabel(objElement, strClass, strLabel)
+function draftToggleLabel(objElement, strClass, strLabel)
 {
 	if(objElement.get('tag') == 'a')
 	{
@@ -43,7 +43,7 @@ function toggleDraftLabel(objElement, strClass, strLabel)
 /**
  * get url vars of iframe
  */
-function getUrlVars() {
+function draftGetUrlVars() {
     var vars = {};
     var parts = window.frames[0].location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
         vars[key] = value;
@@ -60,7 +60,7 @@ function getUrlVars() {
  * @param string button label
  * @return false
  */
-function addSubmitButton(label)
+function draftAddSubmitButton(label)
 {
 	modal = $('simple-modal');
 	
@@ -73,7 +73,7 @@ function addSubmitButton(label)
 	
 	button.addEvent('click', function() {
 		$$('.simple-modal iframe').addEvent('load', function() {
-			if(getUrlVars()['reload'] == undefined)
+			if(draftGetUrlVars()['reload'] == undefined)
 			{
 				$$('.simple-modal .cancel').fireEvent('click');			
 			}
@@ -102,7 +102,7 @@ window.addEvent('domready', function() {
 	{
 		if(pos != this.getNext())
 		{
-			toggleDraftLabel(this, 'sorted', DraftLabels.sorted);
+			draftToggleLabel(this, 'sorted', DraftLabels.sorted);
 		}
 	})
 });

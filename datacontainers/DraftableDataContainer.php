@@ -402,7 +402,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		);
 		
 		$strAttributes = sprintf('onclick="Backend.openModalIframe({\'width\':770,\'title\':\'%s\',\'url\':this.href});'
-								.'addSubmitButton(\'%s\');return false"', 
+								.'draftAddSubmitButton(\'%s\');return false"', 
 								$GLOBALS['TL_LANG'][$this->strTable]['task'][0],
 								$GLOBALS['TL_LANG'][$this->strTable]['task'][2]
 		);
@@ -560,9 +560,21 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		$objModel = DraftableModel::findByPK($this->strTable, $objDc->id, array('uncached'=>true));		
 		$objRelated = $objModel->getRelated();
 				
-		// no related exists, everything is fine
-		if($objRelated === null)
+		// no related exists, check if we need to create a new draft
+		if($objRelated === null && $objModel->ptable != 'tl_drafts')
 		{
+			$objDrafts = \DraftsModel::findOneByPidAndTable($objModel->pid, $objModel->ptable);
+			
+			if($objDrafts !== null)
+			{
+				$objRelated = $objModel->prepareCopy(true);
+				$objRelated->pid = $objDrafts->id;
+				$objRelated->save();
+				
+				$objModel->draftRelated = $objRelated->id;
+				$objModel->save();				
+			}
+			
 			return;
 		}
 			
