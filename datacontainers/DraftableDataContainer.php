@@ -357,12 +357,18 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function initializeDataContainer($strTable)
 	{
+		$strClass = get_class($this);
+		
+		// register onCut callback if any module use draft modules
+		if($strTable == $this->strTable && !empty($GLOBALS['TL_CONFIG']['draftModules']))
+		{
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['oncut_callback'][] = array($strClass, 'onCut');
+		}
+		
 		if($strTable != $this->strTable || !in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 		{
 			return false;
-		}
-		
-		$strClass = get_class($this);
+		}		
 		
 		// GENERAL SETTINGS
 		
@@ -370,8 +376,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['onload_callback'][] 		= array($strClass, 'initialize');
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['onload_callback'][] 		= array($strClass, 'checkPermission');				
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncopy_callback'][] 		= array($strClass, 'onCopy');
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncreate_callback'][] 	= array($strClass, 'onCreate');
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncut_callback'][] 		= array($strClass, 'onCut');		
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncreate_callback'][] 	= array($strClass, 'onCreate');		
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['ondelete_callback'][] 	= array($strClass, 'onDelete');
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['onrestore_callback'][] 	= array($strClass, 'onRestore');
 		$GLOBALS['TL_DCA'][$this->strTable]['config']['onsubmit_callback'][] 	= array($strClass, 'onSubmit');			
@@ -546,66 +551,25 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	
 	
 	/**
-	 * keep sorting in sync or label changes
-	 * 
-	 * @param DC_Table
-	 * @return void
-	 */
-	public function onCut($objDc)
-	{	
-		if($this->objDraft === null || $this->blnDraftMode)
-		{
-			return;
-		}
-
-		$strQuery 	= 'SELECT t.id, t.draftState, j.sorting FROM ' . $this->strTable . ' t'
-					. ' LEFT JOIN ' . $this->strTable . ' j ON j.id = t.draftRelated'
-					. ' WHERE t.pid=? AND t.ptable=? AND t.sorting != j.sorting';
-							
-		$objResult = $this->Database->prepare($strQuery)->execute($this->objDraft->id, 'tl_drafts');
-
-		if($objResult->numRows < 1)
-		{
-			return;
-		}
-		
-		while($objResult->next()) 
-		{		
-			$objModel = new DraftableModel($objResult, true, $this->strTable);
-			$objModel->tstamp = time();
-			$objModel->save();
-		}
-	}
-	
-	
-	/**
-	 * detect if models/drafts has moved to new parent and handle drafts
-	 * Callback is called for every record, not only for enabled draft record
+	 * handle syncing if elements are moved
 	 * 
 	 * @param DC_Table 
 	 */
-	public function onCutDetectNewParents($objDc)
+	public function onCut($objDc)
 	{
-		$objModel = DraftableModel::findByPK($this->strTable, $objDc->id);
-		
-		// it should not be possible to insert into another drafts
-		if($objModel->ptable == 'tl_drafts')
-		{
-			return;
-		}
-		
+		$objModel = DraftableModel::findByPK($this->strTable, $objDc->id, array('uncached'=>true));		
 		$objRelated = $objModel->getRelated();
-		
+				
 		// no related exists, everything is fine
 		if($objRelated === null)
 		{
 			return;
-		}	
-		
+		}
+			
 		// both are no drafts, draft was move into a live place
 		if($objRelated->ptable != 'tl_drafts' && $objModel->ptable != 'tl_drafts')
 		{
-			// create new draft for formerly related
+			// create new draft for formerly related and mark as delete, because it is moved to another place
 			$objNewDrafts = \DraftsModel::findOneByPidAndTable($objRelated->pid, $objRelated->ptable);
 			$objRelated->draftRelated = null;
 			$objModel->draftRelated = null;
@@ -614,7 +578,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			if($objNewDrafts !== null)
 			{
 				$objNew = $objRelated->prepareCopy(true);
-				$objNew->sorting = $objRelated->sorting;
+				$objNew->sorting = $objRelated->sorting;				
 				$objNew->setState('delete');
 				$objNew->save(true);
 				
@@ -642,15 +606,42 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				$objModel->save();
 			}
 		}
+
+		// both are drafts now, so remove relation
+		elseif($objModel->ptable == 'tl_drafts' && $objRelated->ptable == 'tl_drafts')
+		{
+			$objModel->draftRelated = null;
+			$objModel->save();
+			
+			$objRelated->draftRelated = null;
+			$objRelated->save();
+		}
 		
 		// also move draft to new place
 		elseif($objRelated->ptable == 'tl_drafts')
 		{
 			$objDrafts = \DraftsModel::findByPK($objRelated->pid);
-		
-			// model has not moved to new parent
+					
+			// model has not moved to new parent, only update sortings
 			if($objModel->pid == $objDrafts->pid && $objModel->ptable == $objDrafts->ptable)
 			{
+				$strQuery 	= 'SELECT t.id, t.draftState, j.sorting FROM ' . $this->strTable . ' t'
+							. ' LEFT JOIN ' . $this->strTable . ' j ON j.id = t.draftRelated'
+							. ' WHERE t.pid=? AND t.ptable=? AND t.sorting != j.sorting';
+								
+				$objResult = $this->Database->prepare($strQuery)->execute($objDrafts->id, 'tl_drafts');
+		
+				if($objResult->numRows < 1)
+				{
+					return;
+				}
+				
+				while($objResult->next()) 
+				{		
+					$objModel = new DraftableModel($objResult, true, $this->strTable);
+					$objModel->tstamp = time();
+					$objModel->save();
+				}
 				return;
 			}
 	
@@ -668,6 +659,42 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			{
 				$objRelated->delete();					
 			}
+		}
+		
+		// draft is moved
+		elseif($objModel->ptable == 'tl_drafts')
+		{
+			$objDrafts = \DraftsModel::findByPK($objModel->pid);
+					
+			// model has not moved to new parent
+			if($objRelated->pid == $objDrafts->pid && $objRelated->ptable == $objDrafts->ptable)
+			{
+				echo 'no new parent<br>';
+				return;
+			}
+			
+			// create new draft for formerly related and mark as delete, because it is moved to another place
+			$objNewDrafts = \DraftsModel::findOneByPidAndTable($objRelated->pid, $objRelated->ptable);	
+			$objRelated->draftRelated = null;
+			$objModel->draftRelated = null;
+			$objModel->save();			
+			
+			if($objNewDrafts !== null)
+			{				
+				$objNew = clone $objModel;
+				$objNew->pid = $objNewDrafts->id;
+				$objNew->ptable = 'tl_drafts';
+				$objNew->draftRelated = $objRelated->id;
+				$objNew->sorting = $objRelated->sorting;	
+				$objNew->setState('delete');
+				$objNew->setVersioning(true);
+				$objNew->save(true);
+				
+				$objRelated->draftRelated = $objNew->id;
+			}
+
+			$objRelated->setVersioning(false);
+			$objRelated->save();
 		}
 	}
 	
