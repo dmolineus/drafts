@@ -32,11 +32,11 @@ if(!empty($GLOBALS['TL_CONFIG']['draftModules']))
 {
 	if(TL_MODE == 'FE')
 	{
-		$GLOBALS['TL_HOOKS']['getContentElement'][] = array('Netzmacht\Drafts\DataContainer\Content', 'previewContentElement');
+		//$GLOBALS['TL_HOOKS']['getContentElement'][] = array('Netzmacht\Drafts\DataContainer\Content', 'previewContentElement');
 	}
 	else 
 	{
-		$GLOBALS['TL_HOOKS']['parseTemplate'][] = array('Netzmacht\Drafts\DataContainer\Content', 'onParseTemplate');		
+		//$GLOBALS['TL_HOOKS']['parseTemplate'][] = array('Netzmacht\Drafts\DataContainer\Content', 'onParseTemplate');		
 	}
 	
 	$GLOBALS['TL_HOOKS']['loadDataContainer'][] = array('Netzmacht\Drafts\DataContainer\Content', 'initializeDataContainer');

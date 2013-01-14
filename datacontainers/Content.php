@@ -38,6 +38,15 @@ class Content extends DraftableDataContainer
 	 */
 	public function generateChildRecord($arrRow)
 	{
+		$objModel = new DraftableModel($this->strTable);
+		$objModel->setRow($arrRow);
+		
+		if($this->blnDraftMode && $objModel->hasDraft())
+		{
+			$objModel = $objModel->getRelated();
+			$arrRow = $objModel->row();
+		}
+		
 		$key = $arrRow['invisible'] ? 'unpublished' : 'published'; 
 		$type = $GLOBALS['TL_LANG']['CTE'][$arrRow['type']][0] ?: '&nbsp;';
 		$class = 'limit_height';
@@ -72,54 +81,55 @@ class Content extends DraftableDataContainer
 		}
 		
 		// Generate labels
-		$arrState = array();
-		$objModel = new DraftableModel($this->strTable);
-		$objModel->setRow($arrRow);
-		if ($objModel->hasState('new'))
+		if($arrRow['draftState'] > 0)
 		{
-			$arrState[] = 'new';
-		}
-		else
-		{
-			if($objModel->hasState('modified'))
+			$arrState = array();
+			
+			if ($objModel->hasState('new'))
 			{
-				$arrState[] = 'modified';
+				$arrState[] = 'new';
+			}
+			else
+			{
+				if($objModel->hasState('modified'))
+				{
+					$arrState[] = 'modified';
+				}
+				
+				if($objModel->hasState('sorted'))
+				{
+					$arrState[] = 'sorted';
+				}
+				
+				if($objModel->hasState('delete'))
+				{
+					$arrState[] = 'delete';
+				}
+				
+				if($objModel->hasState('visibility'))
+				{
+					$arrState[] = 'visibility';
+				}
 			}
 			
-			if($objModel->hasState('sorted'))
+			static $blnLabelsRendered = false;
+			
+			if(!$blnLabelsRendered)
 			{
-				$arrState[] = 'sorted';
+				$strLabels = '<script>var DraftLabels = { sorted: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_sorted'] . '\''
+							.', visibility: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_visibility'] .  '\'};</script>';
+				$blnLabelsRendered = true;
 			}
 			
-			if($objModel->hasState('delete'))
+			// pass draft labels as javascript
+			if(!empty($arrState))
 			{
-				$arrState[] = 'delete';
-			}
-			
-			if($objModel->hasState('visibility'))
-			{
-				$arrState[] = 'visibility';
-			}
-		}
-		
-		static $blnLabelsRendered = false;
-		$strLabels = '';
-		
-		if(!$blnLabelsRendered)
-		{
-			$strLabels = '<script>var DraftLabels = { sorted: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_sorted'] . '\''
-						.', visibility: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_visibility'] .  '\'};</script>';
-			$blnLabelsRendered = true;
-		}
-		
-		// pass draft labels as javascript
-		if(!empty($arrState))
-		{
-			
-			asort($arrState);
-			foreach ($arrState as $strState) 
-			{
-				$label .= sprintf('<div class="draft_label %s">%s</div>', $strState, $GLOBALS['TL_LANG'][$this->strTable]['draftState_' . $strState]);			
+				
+				asort($arrState);
+				foreach ($arrState as $strState) 
+				{
+					$label .= sprintf('<div class="draft_label %s">%s</div>', $strState, $GLOBALS['TL_LANG'][$this->strTable]['draftState_' . $strState]);			
+				}
 			}
 		}
 		
@@ -153,7 +163,7 @@ class Content extends DraftableDataContainer
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['child_record_callback'] = array($strClass, 'generateChildRecord');
 			
 			// add draft visibility label toggling
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['attributes']		= 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return draftToggleLabel(this, \'visibility\', DraftLabels.visibility)"';
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['attributes'] = 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return draftToggleLabel(this, \'visibility\', DraftLabels.visibility)"';
 		}
 	
 		// check permission for operations in live mode
@@ -180,70 +190,6 @@ class Content extends DraftableDataContainer
 		}
 		
 		return true;
-	}
-
-
-	/**
-	 * make sure that new preview elements are also displayed 
-	 * HOOK: getContentElement
-	 * 
-	 * @see ReleaseManagementSystem rms
-	 * @param Database\Result
-	 * @param string
-	 * @return string
-	 */
-	public function previewContentElement($objRow, $strBuffer, $objElement)
-	{
-		// only render on preview
-		if(\Input::cookie('DRAFT_MODE') != '1' || $objRow->ptable == 'tl_drafts')
-		{
-			if($objRow->ptable == 'tl_drafts')
-			{
-				unset(static::$arrContentElements[$objRow->pid][$objRow->id]);
-			}
-			return $strBuffer;
-		}
-		
-		$objDraft = \DraftsModel::findOneByPidAndTable($objRow->pid, $objRow->ptable);
-		
-		if($objDraft === null)
-		{
-			return $strBuffer;
-		}
-		
-		$pid = $objDraft->id;
-		
-		// get all ids of draft elements to get new elements and the new order
-		if(!isset(static::$arrContentElements[$pid]))
-		{
-			static::$arrContentElements[$pid] = array();
-						
-			$objResult = $this->Database->prepare('SELECT id FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? ORDER BY sorting')
-										->execute($objDraft->id, 'tl_drafts');
-			
-			static::$arrContentElements[$pid] = $objResult->fetchEach('id');
-		}
-			
-		$blnBreak = false;
-		$strGenerated = '';
-		
-		// generate all content elements until current is found, required to display new elements
-		foreach(static::$arrContentElements[$pid] as $intKey => $intId)
-		{
-			unset(static::$arrContentElements[$pid][$intKey]);
-			
-			if($intId == $objRow->draftRelated)
-			{
-				$strGenerated .= $strBuffer;	
-				break;
-			}
-			else
-			{
-				$strGenerated .= $this->getContentElement($intId);
-			}
-		}
-		
-		return $strGenerated;
 	}
 
 

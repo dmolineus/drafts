@@ -108,6 +108,15 @@ class DraftableModel extends VersioningModel
 	
 	
 	/**
+	 * check if element has a draft
+	 */
+	public function hasDraft()
+	{
+		return !$this->isDraft() && $this->draftRelated > 0;
+	}
+	
+	
+	/**
 	 * check if model has a state
 	 * 
 	 * @param string 
@@ -138,7 +147,7 @@ class DraftableModel extends VersioningModel
 			return false;
 		}
 		
-		return $this->objModel->draftState & $intFlag;
+		return (($this->objModel->draftState & $intFlag) == $intFlag);
 	}
 	
 	
@@ -147,7 +156,7 @@ class DraftableModel extends VersioningModel
 	 */
 	public function isDraft()
 	{
-		return $this->ptable == 'tl_drafts';
+		return $this->hasState('draft');
 	}
 	
 	
@@ -173,25 +182,14 @@ class DraftableModel extends VersioningModel
 			$objNew->draftRelated = $this->id;
 		}
 		
-		if($this->isDraft())
-		{
-			$objDraft = \DraftsModel::findByPK($this->pid);
-		}
-		else 
-		{
-			$objDraft = \DraftsModel::findOneByPidAndTable($this->pid, $this->ptable);
-		}
-		
 		// pid and ptable
 		if($blnDraft)
 		{
-			$objNew->pid = $objDraft->id;
-			$objNew->ptable = 'tl_drafts';
+			$objNew->setState('draft');
 		}
 		else
 		{
-			$objNew->pid = $objDraft->pid;
-			$objNew->ptable = $objDraft->ptable;
+			$objNew->removeState('draft');
 		}
 
 		return $objNew;
@@ -233,12 +231,16 @@ class DraftableModel extends VersioningModel
 	{
 		switch ($strState) 
 		{
-			case 'modified':
+			case 'draft':
 				$intFlag = 1;
+				break;
+				
+			case 'modified':
+				$intFlag = 2;
 				break;
 			
 			case 'delete':
-				$intFlag = 2;
+				$intFlag = 4;
 				break;
 				
 			default:

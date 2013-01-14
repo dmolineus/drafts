@@ -19,7 +19,11 @@ ClassLoader::addClasses(array
 	'Netzmacht\Drafts\DataContainer\Content' 				=> 'system/modules/drafts/datacontainers/Content.php',
 	'Netzmacht\Drafts\DataContainer\Drafts' 				=> 'system/modules/drafts/datacontainers/Drafts.php',
 	
+	// drivers
+	'DC_DraftableTable' 											=> 'system/modules/drafts/drivers/DC_DraftableTable.php',
+	
 	// models
+	'ContentModel'											=> 'system/modules/drafts/models/ContentModel.php',
 	'DraftsModel' 											=> 'system/modules/drafts/models/DraftsModel.php',
 	'Netzmacht\Drafts\Model\VersioningCollection'			=> 'system/modules/drafts/models/VersioningCollection.php',
 	'Netzmacht\Drafts\Model\VersioningModel' 				=> 'system/modules/drafts/models/VersioningModel.php',
@@ -30,7 +34,7 @@ ClassLoader::addClasses(array
 	'ModuleTasks' 											=> 'system/modules/drafts/modules/ModuleTasks.php',
 	
 	// elements
-	'ContentElement' 											=> 'system/modules/drafts/elements/ContentElement.php',
+	//'ContentElement' 											=> 'system/modules/drafts/elements/ContentElement.php',
 	
 	// widgets
 	'Netzmacht\Drafts\Widget\PreviewSwitch'					=> 'system/modules/drafts/widgets/PreviewSwitch.php',
