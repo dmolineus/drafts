@@ -1320,18 +1320,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				return true;
 			}
 			
-			$arrPerm = $this->Session->get('draftPermission');
-				
-			if($arrPerm === null)
-			{
-				$arrPerm = array();
-			}
-
-			$arrPerm['module'] = $this->objDraft->module;
-			$arrPerm['ptable'] = $this->objDraft->ptable;
-			$arrPerm['pid'] = $this->objDraft->pid;
-			
-			$this->Session->set('draftPermission', $arrPerm);
+			$intPerm = $this->objDraft->id;
+			$this->Session->set('draftPermission', $intPerm);
 			
 			// redirect back to draft mode
 			if(Input::get('redirect') == '1' && $this->objDraft !== null)
@@ -1363,9 +1353,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		
 		// only check if no key attribute is given, key checking is rule based
 		// access is stored in session, so check it first
-		$arrPerm = $this->Session->get('draftPermission');
+		$intPerm = $this->Session->get('draftPermission');
 
-		if(Input::get('key') != '' || (is_array($arrPerm) && $arrPerm['module'] == $this->objDraft->module && $arrPerm['ptable'] == $this->objDraft->ptable && $arrPerm['pid'] == $this->objDraft->pid))
+		if(Input::get('key') != '' || $intPerm == $this->objDraft->id)
 		{
 			return true;
 		}

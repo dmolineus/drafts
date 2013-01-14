@@ -44,9 +44,9 @@ class ModuleTasks extends Contao\ModuleTasks
 				return true;
 			}
 			
-			$arrPerm = $this->Session->get('draftPermission');
+			$intPerm = $this->Session->get('draftPermission');
 			
-			if(is_array($arrPerm) && $arrPerm['module'] == $objDraft->module && $arrPerm['ptable'] == $objDraft->ptable && $arrPerm['pid'] == $objDraft->pid)
+			if($intPerm == $objDraft->id)
 			{
 				return true;
 			}
