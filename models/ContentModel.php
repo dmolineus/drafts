@@ -35,6 +35,7 @@ class ContentModel extends Contao\ContentModel
 			elseif(!is_array($arrOptions['column']))
 			{
 				// try to find related one
+				// useful for ContentAlias for example
 				if($arrOptions['column'] == 'id')
 				{
 					$arrNew = $arrOptions;
