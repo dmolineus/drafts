@@ -357,11 +357,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['task'] = array
 		(
 			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['task'],
-			'href' 				=> 'contao/main.php?do=' . Input::get('do') . '&key=task',
+			'href' 				=> 'system/modules/drafts/task.php?do=' . Input::get('do') . '&amp;table=' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . '&amp;id=' . $this->intId . '&amp;rt=' . REQUEST_TOKEN,
 			'class'				=> 'header_task',
 			'attributes'		=> $strAttributes,
 			'button_callback' 	=> array($strClass, 'generateGlobalButtonTask'),
-			'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate'),
+			'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate:plain'),
 		);
 		
 		// DRAFT MODE SETTINGS		
@@ -912,17 +912,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected function buttonRuleTaskButton(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		if(!in_array('tasks', $this->Config->getActiveModules()) || !$GLOBALS['TL_CONFIG']['draftUseTaskModule'])
-		{
-			return false;
-		}
-		
-		$arrAttributes['plain'] = true;
-		$arrAttributes['__set__'][] = 'plain';
-
-		// TODO: task link
-		//$strHref = 'system/modules/drafts/task.php?id=' . $this->obj2Draft->id . '&rt=' . REQUEST_TOKEN;
-		return true;
+		return in_array('tasks', $this->Config->getActiveModules()) || !$GLOBALS['TL_CONFIG']['draftUseTaskModule'];
 	}
 
 	
