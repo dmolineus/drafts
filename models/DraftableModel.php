@@ -86,6 +86,28 @@ class DraftableModel extends VersioningModel
 	
 	
 	/**
+	 * make sure that relation will be unset by deleting a draftable model
+	 * 
+	 * @return int
+	 */
+	public function delete()
+	{
+		$intAffectedRows = parent::delete();
+		
+		if($intAffectedRows > 0 && $this->hasRelated())
+		{
+			// do not use getRelated because it could be cached, @see #5248
+			$objRelated = new static($this->objModel->getTable());
+			$objRelated->id = $this->draftRelated;
+			$objRelated->draftRelated = null;			
+			$objRelated->save();
+		}
+		
+		return $intAffectedRows;
+	}
+	
+	
+	/**
 	 * get draftRelated by default and do not throw exception if draft related is not set
 	 * 
 	 * @param string
@@ -110,9 +132,9 @@ class DraftableModel extends VersioningModel
 	/**
 	 * check if element has a draft
 	 */
-	public function hasDraft()
+	public function hasRelated()
 	{
-		return !$this->isDraft() && $this->draftRelated > 0;
+		return $this->draftRelated > 0;
 	}
 	
 	
@@ -163,33 +185,30 @@ class DraftableModel extends VersioningModel
 	/**
 	 * create a new model by cloning a reference and replace
 	 * 
-	 * @param bool true if new model is a draft
-	 * @param bool switch id and draftRelated
+	 * @param bool switch between related and original
 	 * @param bool true if forcing a new model 
 	 * @param bool true is versioning shall be used
 	 */
-	public function prepareCopy($blnDraft=false, $blnSwitchIds=true, $blnNew=false, $blnVersioning=true)
+	public function prepareCopy($blnSwitch=true, $blnNew=false, $blnVersioning=true)
 	{
 		$objNew = clone $this;
 		$objNew->setVersioning($blnVersioning);
-		$objNew->draftState = 0;
 		$objNew->tstamp = time();
-				
-		// id and draft related
-		if($blnSwitchIds)
+		
+		// switch ids and draft state
+		if($blnSwitch)
 		{
 			$objNew->id = $blnNew ? null : $this->draftRelated;
 			$objNew->draftRelated = $this->id;
-		}
-		
-		// pid and ptable
-		if($blnDraft)
-		{
-			$objNew->setState('draft');
-		}
-		else
-		{
-			$objNew->removeState('draft');
+			
+			if($this->isDraft())
+			{
+				$objNew->draftState = 0;
+			}
+			else
+			{
+				$objNew->setState('draft');
+			}
 		}
 
 		return $objNew;

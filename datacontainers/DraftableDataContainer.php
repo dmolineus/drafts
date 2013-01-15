@@ -111,7 +111,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		$objOriginal = $objModel->getRelated();
-		$blnSave = true;
 
 		// delete original will also delete draft
 		if($objModel->hasState('delete'))
@@ -123,10 +122,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// create new original
 		elseif($objModel->hasState('new'))
 		{
-			$objNew = $objModel->prepareCopy(false, true, true);
-			$objNew->draftRelated = null;
-			$objNew->save(true);
-			$blnSave = false;
+			$objModel->draftState = 0;
+			$objModel->draftRelated = null;
+			$objModel->save();
 		}
 		
 		elseif($objOriginal !== null)
@@ -134,30 +132,28 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			// apply changes 
 			if($objModel->hasState('modified'))
 			{
-				$objNew = $objModel->prepareCopy(false);
+				$objNew = $objModel->prepareCopy();
 				$objNew->draftRelated = null;
 				$objNew->save();
-				$blnSave = false;
-			}
-			
-			// apply new sorting
-			if($objModel->hasState('sorted'))
+			}			
+			else
 			{
-				$objOriginal->sorting = $objModel->sorting;
-			}
-			
-			// apply new visibility
-			if($objModel->hasState('visibility'))
-			{
-				$objOriginal->invisible = $objModel->invisible;
-			}
-			
-			if($blnSave)
-			{
+				// apply new sorting
+				if($objModel->hasState('sorted'))
+				{
+					$objOriginal->sorting = $objModel->sorting;
+				}
+				
+				// apply new visibility
+				if($objModel->hasState('visibility'))
+				{
+					$objOriginal->invisible = $objModel->invisible;
+				}
+				
 				$objOriginal->draftRelated = null;
 				$objOriginal->setVersioning(true);
 				$objOriginal->tstamp = time();
-				$objOriginal->save();				
+				$objOriginal->save();
 			}
 			
 			$objModel->delete();
@@ -209,13 +205,13 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				$this->redirect($this->getReferer());
 			}
 			
-			$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftState > 0 AND ' . $this->Database->findInSet('id', $arrIds);
+			$strQuery = 'SELECT id FROM ' . $this->strTable . ' WHERE draftState > 0 AND ' . $this->Database->findInSet('id', $arrIds);
 			$objResult = $this->Database->query($strQuery);
 
 			while($objResult->next())
 			{
-				$objModel = new DraftableModel($objResult, false, $this->strTable);
-				$this->resetDraft($objDc, $objModel, true);
+				$objDc->setId($objResult->id);
+				$this->resetDraft($objDc, true);
 			}
 			
 			$this->redirect($this->getReferer());
@@ -398,7 +394,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		{
 			$objModel = DraftableModel::findByPK($this->strTable, $insertID);
 			
-			$objNew = $objModel->prepareCopy(true, true, true);
+			$objNew = $objModel->prepareCopy(true, true);
 			$objNew->save();
 			
 			$objModel->draftRelated = $objNew->id;
@@ -434,59 +430,48 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function onCut($objDc)
 	{
-		$objModel = DraftableModel::findByPK($this->strTable, $objDc->id, array('uncached'=>true));		
-		$objRelated = $objModel->getRelated();
+		//return;
+		$objModel = DraftableModel::findByPK($this->strTable, Input::get('id'), array('uncached'=>true));		
+		$objRelated = DraftableModel::findOneByDraftRelated($this->strTable, Input::get('id'), array('uncached'=>true));
 				
 		// no related exists, check if we need to create a new draft
-		if($objRelated === null && $objModel->draftState == 0)
+		if($objRelated === null && !$objModel->isDraft())
 		{
-			$objDrafts = \DraftsModel::findOneByPidAndTable($objModel->pid, $objModel->ptable);
-			
-			if($objDrafts !== null)
-			{
-				$objRelated = $objModel->prepareCopy(true);
-				$objRelated->pid = $objDrafts->id;
-				$objRelated->save();
+			$objRelated = $objModel->prepareCopy();
+			$objRelated->save();
 				
-				$objModel->draftRelated = $objRelated->id;
-				$objModel->save();				
-			}
+			$objModel->draftRelated = $objRelated->id;
+			$objModel->save();
 			
 			return;
 		}
 			
 		// both are no drafts, draft was move into a live place
-		if($objRelated->draftState == 0 && $objModel->draftState == 0)
+		if(!$objRelated->isDraft() && !$objModel->isDraft())
 		{
-			// create new draft for formerly related and mark as delete, because it is moved to another place
-			$objNewDrafts = \DraftsModel::findOneByPidAndTable($objRelated->pid, $objRelated->ptable);
 			$objRelated->draftRelated = null;
 			$objModel->draftRelated = null;
 			$objModel->save();
 			
-			if($objNewDrafts !== null)
+			if(true) // TODO: check new parents
 			{
-				$objNew = $objRelated->prepareCopy(true);
+				$objNew = $objRelated->prepareCopy();
 				$objNew->sorting = $objRelated->sorting;				
 				$objNew->setState('delete');
 				$objNew->save(true);
-				
+					
 				$objRelated->draftRelated = $objNew->id;
-				$objRelated->setVersioning(false);
+				$objRelated->setVersioning(false);				
+				$objRelated->save();
 			}
-			
-			$objRelated->save();
-			
-			// create new draft for model
-			$objNewDrafts = \DraftsModel::findOneByPidAndTable($objModel->pid, $objModel->ptable);
-			
-			if($objNewDrafts !== null)
-			{
+
+			if(true) // TODO: check new parents
+			{			
 				$objNew = clone $objRelated;
 				$objNew->draftRelated = $objModel->id;
 				$objNew->sorting = $objModel->sorting;
 				$objNew->save(true);
-				
+					
 				$objModel->draftRelated = $objNew->id;
 				$objModel->setVersioning(false);
 				$objModel->save();
@@ -494,7 +479,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 
 		// both are drafts now, so remove relation
-		elseif($objRelated->draftState > 0 && $objModel->draftState > 0)
+		elseif($objRelated->isDraft() && $objModel->isDraft())
 		{
 			$objModel->draftRelated = null;
 			$objModel->save();
@@ -504,8 +489,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		// model has not moved to new parent, only update sortings
-		elseif($objRelated->draftState > 0 && $objModel->pid == $objRelated->pid)
-		{
+		elseif(!$this->blnDraftMode && $objRelated->isDraft() && $objModel->pid == $objRelated->pid)
+		{			
 			$strQuery 	= 'SELECT t.id, t.draftState, j.sorting FROM ' . $this->strTable . ' t'
 						. ' LEFT JOIN ' . $this->strTable . ' j ON j.id = t.draftRelated'
 						. ' WHERE t.pid=? AND t.draftState > 0 AND t.sorting != j.sorting';
@@ -520,21 +505,19 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			while($objResult->next()) 
 			{
 				// sorting will be updated because live sorting was selected
-				$objModel = new DraftableModel($objResult, true, $this->strTable);
-				$objModel->tstamp = time();
-				$objModel->save();
+				$objNew = new DraftableModel($objResult, true, $this->strTable);
+				$objNew->tstamp = time();
+				$objNew->save();
 			}
 		}
 			
 		// move draft to new place
-		elseif($objRelated->draftState > 0)
-		{	
-			$objNewDrafts = \DraftsModel::findOneByPidAndTable($objModel->pid, $objModel->ptable);
-				
+		elseif($objModel->pid != $objRelated->pid && $objRelated->isDraft())
+		{
 			// new parent has also a draft
-			if($objNewDrafts !== null)
+			if(true) // TODO: check new parents
 			{
-				$objRelated->pid = $objNewDrafts->id;
+				$objRelated->pid = $objModel->pid;
 				$objRelated->setState('draft');
 				$objRelated->sorting = $objModel->sorting;
 				$objRelated->save();
@@ -546,7 +529,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		// draft is moved
-		elseif($objModel->draftState > 0)
+		elseif($objModel->pid != $objRelated->pid && $objModel->draftState > 0)
 		{
 			// model has not moved to new parent
 			if($objRelated->pid == $objModel->pid)
@@ -587,7 +570,21 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function onDelete($objDc)
 	{
-		if($this->blnDraftMode)
+		// just reset relation if reset is called
+		if($this->strAction == 'reset')
+		{
+			$objModel = new DraftableModel($objDc->activeRecord, false, $this->strTable);
+			
+			if($objModel->hasRelated())
+			{
+				$objReleated = $objModel->getRelated();
+				$objReleated->draftRelated = null;
+				$objReleated->save();
+			}
+			
+			return;
+		}
+		elseif($objDc->activeRecord->draftState > 0)
 		{
 			// delete all mode, do nothing here. applyDraft is handling the delete task
 			if(Input::post('IDS') != '')
@@ -694,7 +691,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			if($objResult->numRows == 1 && $objResult->draftRelated > 0)
 			{
-				$objModel = DraftableModel::findByPK($this->strTable, $intId)->prepareCopy(true); 
+				$objModel = DraftableModel::findByPK($this->strTable, $intId)->prepareCopy(); 
 				$objModel->save();
 			}
 		}
@@ -732,7 +729,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		{
 			if($objDc->activeRecord->draftRelated != null)
 			{
-				$objNew = $objModel->prepareCopy(true);
+				$objNew = $objModel->prepareCopy();
 				$objNew->save();
 			}
 		}
@@ -791,37 +788,13 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 
 
 	/**
-	 * reset single draft
+	 * reset draft will delete it
 	 * 
-	 * @param Model|null
+	 * @param DC_DraftableTable
+	 * @param bool
 	 */
-	public function resetDraft($objDc, $objModel = null, $blnDoNoRedirect=false)
-	{
-		// try to find model
-		if($objModel === null)
-		{
-			$this->initialize($objDc);
-			$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
-
-			if($objModel === null)
-			{
-				$this->triggerError('Invalid approach to reset draft. No draft found', 'resetDraft', $blnDoNoRedirect);
-				return;
-			}
-		}
-		elseif(!$objModel instanceof DraftableModel)
-		{
-			$objModel = new DraftableModel($objModel, false);
-		}
-		
-		$objOriginal = $objModel->getRelated();
-		
-		if($objOriginal !== null)
-		{
-			$objOriginal->draftRelated = null;
-			$objOriginal->save();
-		}
-		
+	public function resetDraft($objDc, $blnDoNoRedirect=false)
+	{	
 		$objDc->delete(true);
 		
 		if(!$blnDoNoRedirect)
@@ -848,7 +821,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		$objModel = new DraftableModel($this->strTable);
 		$objModel->setRow($arrRow);
 
-		if(!$objModel->hasDraft())
+		if(!$objModel->hasRelated() && !$objModel->isDraft())
 		{
 			return false;
 		}
@@ -1016,7 +989,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				{
 					$objModel = new DraftableModel($objResult, true, $this->strTable);
 
-					$objNew = $objModel->prepareCopy(true);
+					$objNew = $objModel->prepareCopy();
 					$objNew->pid = $this->objDraft->id;
 					$objNew->save(true);					
 					
@@ -1070,31 +1043,34 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		//
-		elseif(!in_array($this->strAction, array(null, 'select', 'create')) && !($this->strAction == 'paste' && Input::get('mode') == 'create'))
+		else
 		{
-			$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
-
-			if($objModel->isDraft())
+			if(!in_array($this->strAction, array(null, 'select', 'create')) && !($this->strAction == 'paste' && Input::get('mode') == 'create'))
 			{
-				$objDc->setId($objModel->id);
-			}
-			elseif(!$objModel->hasDraft())
-			{
-				$objDraft = $objModel->prepareCopy(true, true, true);
-				$objDraft->save(true);
-				
-				$objModel->draftRelated = $objDraft->id;
-				$objModel->save();
-				
-				$this->reload();
-				
-				$objDc->setId($objDraft->id);
-				$this->intId = $objDc->id;
-			}
-			else
-			{
-				$objDc->setId($objModel->draftRelated);
-				$this->intId = $objDc->id;	
+				$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
+	
+				if($objModel->isDraft())
+				{
+					$objDc->setId($objModel->id);
+				}
+				elseif(!$objModel->hasRelated())
+				{
+					$objDraft = $objModel->prepareCopy(true);
+					$objDraft->save(true);
+					
+					$objModel->draftRelated = $objDraft->id;
+					$objModel->save();
+					
+					$this->reload();
+					
+					$objDc->setId($objDraft->id);
+					$this->intId = $objDc->id;
+				}
+				else
+				{
+					$objDc->setId($objModel->draftRelated);
+					$this->intId = $objDc->id;	
+				}
 			}
 		}
 	}
