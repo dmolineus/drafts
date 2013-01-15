@@ -13,7 +13,7 @@
  **/
 
 namespace Netzmacht\Drafts\Model;
-use Model;
+use DraftsModel, Model;
 
 /**
  * DraftableModel provides a common interface which can handle draft features
@@ -182,44 +182,35 @@ class DraftableModel extends VersioningModel
 	/**
 	 * create a new model by cloning a reference and replace
 	 * 
-	 * @param bool true if new model is a draft
 	 * @param bool switch id and draftRelated
 	 * @param bool true if forcing a new model 
 	 * @param bool true is versioning shall be used
 	 */
-	public function prepareCopy($blnDraft=false, $blnSwitchIds=true, $blnNew=false, $blnVersioning=true)
+	public function prepareCopy($blnSwitch=true, $blnNew=false, $blnVersioning=true)
 	{
 		$objNew = clone $this;
 		$objNew->setVersioning($blnVersioning);
 		$objNew->draftState = 0;
 		$objNew->tstamp = time();
-				
+		
 		// id and draft related
-		if($blnSwitchIds)
+		if($blnSwitch)
 		{
 			$objNew->id = $blnNew ? null : $this->draftRelated;
 			$objNew->draftRelated = $this->id;
-		}
-		
-		if($this->isDraft())
-		{
-			$objDraft = \DraftsModel::findByPK($this->pid);
-		}
-		else 
-		{
-			$objDraft = \DraftsModel::findOneByPidAndTable($this->pid, $this->ptable);
-		}
-		
-		// pid and ptable
-		if($blnDraft)
-		{
-			$objNew->pid = $objDraft->id;
-			$objNew->ptable = 'tl_drafts';
-		}
-		else
-		{
-			$objNew->pid = $objDraft->pid;
-			$objNew->ptable = $objDraft->ptable;
+			
+			if($this->isDraft())
+			{
+				$objDraft = DraftsModel::findByPK($this->pid);
+				$objNew->pid = $objDraft->pid;
+				$objNew->ptable = $objDraft->ptable;
+			}
+			else
+			{
+				$objDraft = DraftsModel::findOneByPidAndTable($this->pid, $this->ptable);
+				$objNew->pid = $objDraft->id;
+				$objNew->ptable = 'tl_drafts';
+			}
 		}
 
 		return $objNew;

@@ -125,7 +125,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// create new original
 		elseif($objModel->hasState('new'))
 		{
-			$objNew = $objModel->prepareCopy(false, true, true);
+			$objNew = $objModel->prepareCopy(true, true);
 			$objNew->save(true);
 			
 			$objModel->draftState = 0;
@@ -141,7 +141,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			// apply changes 
 			if($objModel->hasState('modified'))
 			{
-				$objNew = $objModel->prepareCopy(false);
+				$objNew = $objModel->prepareCopy();
 				$objNew->save();
 			}
 			
@@ -514,7 +514,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		{
 			$objModel = DraftableModel::findByPK($this->strTable, $insertID);
 			
-			$objNew = $objModel->prepareCopy(true, true, true);
+			$objNew = $objModel->prepareCopy(true, true);
 			$objNew->save();
 			
 			$objModel->draftRelated = $objNew->id;
@@ -540,7 +540,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			$objModel->setRow($arrSet);
 			$objModel->id = $intId;
 			
-			$objNew = $objModel->prepareCopy(true, true, true);
+			$objNew = $objModel->prepareCopy(true, true);
 			$objNew->save(true);
 			
 			$objModel->draftRelated = $objNew->id;
@@ -567,7 +567,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			if($objDrafts !== null)
 			{
-				$objRelated = $objModel->prepareCopy(true);
+				$objRelated = $objModel->prepareCopy();
 				$objRelated->pid = $objDrafts->id;
 				$objRelated->save();
 				
@@ -589,7 +589,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			if($objNewDrafts !== null)
 			{
-				$objNew = $objRelated->prepareCopy(true);
+				$objNew = $objRelated->prepareCopy();
 				$objNew->sorting = $objRelated->sorting;				
 				$objNew->setState('delete');
 				$objNew->save(true);
@@ -837,7 +837,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			if($objResult->numRows == 1 && $objResult->draftRelated > 0)
 			{
-				$objModel = DraftableModel::findByPK($this->strTable, $intId)->prepareCopy(true); 
+				$objModel = DraftableModel::findByPK($this->strTable, $intId)->prepareCopy(); 
 				$objModel->save();
 			}
 		}
@@ -875,7 +875,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		{
 			if($objDc->activeRecord->draftRelated != null)
 			{
-				$objNew = $objModel->prepareCopy(true);
+				$objNew = $objModel->prepareCopy();
 				$objNew->save();
 			}
 		}
@@ -964,7 +964,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// modified draft, reset to original
 		if($objModel->hasState('modified')) 
 		{
-			$objNew = $objOriginal->prepareCopy(true);
+			$objNew = $objOriginal->prepareCopy();
 			$objNew->save();
 		}
 		
@@ -1201,7 +1201,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				{
 					$objModel = new DraftableModel($objResult, true, $this->strTable);
 
-					$objNew = $objModel->prepareCopy(true);
+					$objNew = $objModel->prepareCopy();
 					$objNew->pid = $this->objDraft->id;
 					$objNew->save(true);					
 					
