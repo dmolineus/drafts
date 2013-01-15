@@ -69,9 +69,8 @@ class DiffController extends Backend
 		else
 		{
 			$this->strTable = \Input::get('table');
-			$strModelClass = $this->getModelClassFromTable($this->strTable);
-			$objDraft = $strModelClass::findByPK(\Input::get('id'));			
-			$objModel = $strModelClass::findOneBy('draftid', \Input::get('id'));
+			$objDraft = Netzmacht\Drafts\Model\DraftableModel::findByPK($this->strTable, \Input::get('id'));
+			$objModel = $objDraft->getRelated(); 
 			
 			if ($objDraft === null || $objModel === null)
 			{
