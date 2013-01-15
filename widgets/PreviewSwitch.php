@@ -30,7 +30,7 @@ class PreviewSwitch extends \SelectMenu
 		$arrAttributes['id'] = 'draft';
 		$arrAttributes['name'] = 'draft';
 		$arrAttributes['label'] = $GLOBALS['MSC']['draftModesLabel']; 
-		$arrAttributes['value'] = Input::post('draft');
+		$arrAttributes['value'] = Input::post('draft') == '' ? Input::cookie('DRAFT_MODE') : Input::post('draft');
 		$arrAttributes['forAttribute'] = true;
 		parent::__construct($arrAttributes);		
 		
