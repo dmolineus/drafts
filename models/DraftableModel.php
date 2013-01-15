@@ -86,6 +86,25 @@ class DraftableModel extends VersioningModel
 	
 	
 	/**
+	 * delete and unset relation
+	 * 
+	 * @return int
+	 */
+	public function delete()
+	{
+		if($this->hasRelated())
+		{
+			$objRelated = new static($this->getTable());
+			$objRelated->id = $this->draftRelated;
+			$objRelated->draftRelated = null;
+			$objRelated->save();
+		}
+		
+		return parent::delete();
+	}
+	
+	
+	/**
 	 * get draftRelated by default and do not throw exception if draft related is not set
 	 * 
 	 * @param string
@@ -104,6 +123,15 @@ class DraftableModel extends VersioningModel
 		}
 		
 		return parent::getRelated($strKey);		
+	}
+	
+	
+	/**
+	 * check if element as a relation
+	 */
+	public function hasRelated()
+	{
+		return $this->draftRelated !== null;
 	}
 	
 	
