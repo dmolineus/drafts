@@ -748,17 +748,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		if($this->blnDraftMode)
 		{
 			return $blnVisible;
-			$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
-
-			if($blnVisible == ($objModel->invisible == '1') || $objModel->hasState('visibility'))
-			{
-				return $blnVisible;
-			}
-			
-			$objModel->invisible = $blnVisible;
-			$objModel->tstamp = time();
-			$objModel->save();
-			return $blnVisible;
 		}
 		
 		$strField = 'id';
