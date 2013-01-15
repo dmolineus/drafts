@@ -24,14 +24,25 @@ class ContentModel extends Contao\ContentModel
 	{		
 		$t = static::$strTable;
 		
-		// do match if single column is passed
-		if(isset($arrOptions['column']) && is_string($arrOptions['column']))
-		{
-			return parent::find($arrOptions);
-		}
-		elseif(!is_array($arrOptions['column']))
+		if(!isset($arrOptions['column']))
 		{
 			$arrOptions['column'] = array();
+		}
+ 
+		elseif(!is_array($arrOptions['column']))
+		{
+			// load dca extrator so data container is loaded, can not use loadDataContainer is static context
+			$objDca = new \DcaExtractor($t);
+			$strKey = $arrOptions['column'];
+			$arrKeys = $GLOBALS['TL_DCA'][$t]['config']['sql']['keys'];
+
+			// do not add draftState if column is unique			
+			if((isset($arrKeys[$strKey]) && ($arrKeys[$strKey] == 'unique' || $arrKeys[$strKey] == 'primary')) || $GLOBALS['TL_DCA'][$t]['fields'][$strKey]['eval']['unique'])
+			{
+				return parent::find($arrOptions);				
+			}
+			
+			$arrOptions['column'] = array($arrOptions['column']);
 		}
 		
 		// get all draft elements
