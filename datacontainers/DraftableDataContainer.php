@@ -905,7 +905,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected function buttonRuleTaskButton(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		return in_array('tasks', $this->Config->getActiveModules()) || !$GLOBALS['TL_CONFIG']['draftUseTaskModule'];
+		return $GLOBALS['TL_CONFIG']['draftUseTaskModule'] && in_array('tasks', $this->Config->getActiveModules());
 	}
 
 	
