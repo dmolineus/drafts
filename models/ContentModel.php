@@ -22,7 +22,7 @@ class ContentModel extends Contao\ContentModel
 	 */
 	protected static function find(array $arrOptions)
 	{
-		$blnPreview = TL_MODE == 'FE' && \Input::cookie('DRAFT_MODE') == '1';
+		$blnPreview = (TL_MODE == 'FE' && \Input::cookie('DRAFT_MODE') == '1') || (isset($arrOptions['draft']) && $arrOptions['draft']);
 		$t = static::$strTable;
 		
 		if(!isset($arrOptions['column']))
