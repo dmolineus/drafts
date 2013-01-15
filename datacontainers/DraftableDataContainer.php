@@ -614,7 +614,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			return;
 		}
-		elseif($objDc->activeRecord->draftState > 0)
+		elseif($this->blnDraftMode)
 		{
 			// delete all mode, do nothing here. applyDraft is handling the delete task
 			if(Input::post('IDS') != '')
@@ -645,8 +645,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 					return;
 				}
 
-				$objModel->removeState('delete');					
-
+				$objModel->removeState('delete');
 			}
 			else 
 			{
@@ -662,8 +661,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		elseif($objDc->activeRecord->draftRelated != null)
 		{
 			// get last undo
-			$objUndo = $this->Database->prepare('SELECT * FROM tl_undo WHERE fromTable=? AND pid=? ORDER BY id DESC')->limit(1)->execute($this->strTable, $this->User->id);
-			
+			$objUndo = $this->Database->prepare('SELECT * FROM tl_undo WHERE fromTable=? AND pid=? ORDER BY id DESC')->limit(1)->executeUncached($this->strTable, $this->User->id);
+
 			// no undo set found, just delete it
 			if($objUndo->numRows < 1)
 			{
