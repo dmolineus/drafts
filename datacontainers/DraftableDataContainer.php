@@ -19,6 +19,7 @@ use Netzmacht\Drafts\Model\DraftableModel, Input, DraftsModel, DC_Table, Contao\
 // initialize draft modules
 $GLOBALS['TL_CONFIG']['draftModules'] = unserialize($GLOBALS['TL_CONFIG']['draftModules']);
 
+
 /**
  * DraftableDataContainer provides draft functionality for tables with dynamic ptable
  * 
@@ -136,8 +137,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		
 		elseif($objOriginal !== null)
 		{
-			$blnSave = false;
-		
 			// apply changes 
 			if($objModel->hasState('modified'))
 			{
@@ -145,25 +144,30 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				$objNew->save();
 			}
 			
-			// apply new sorting
-			if($objModel->hasState('sorted'))
+			else
 			{
-				$objOriginal->sorting = $objModel->sorting;
-				$blnSave = true;
-			}
-			
-			// apply new visibility
-			if($objModel->hasState('visibility'))
-			{
-				$objOriginal->invisible = $objModel->invisible;
-				$blnSave = true;
-			}
-			
-			if($blnSave)
-			{
-				$objOriginal->setVersioning(true);
-				$objOriginal->tstamp = time();
-				$objOriginal->save();
+				$blnSave = false;
+				
+				// apply new sorting
+				if($objModel->hasState('sorted'))
+				{
+					$objOriginal->sorting = $objModel->sorting;
+					$blnSave = true;
+				}
+				
+				// apply new visibility
+				if($objModel->hasState('visibility'))
+				{
+					$objOriginal->invisible = $objModel->invisible;
+					$blnSave = true;
+				}
+				
+				if($blnSave)
+				{
+					$objOriginal->setVersioning(true);
+					$objOriginal->tstamp = time();
+					$objOriginal->save();
+				}				
 			}
 			
 			$objModel->draftState= 0;
@@ -1257,7 +1261,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] = 'sorting ';
 			}
 			
-							
 			// default redirect to draft mode
 			if(Input::get('draft') == '' && Input::get('redirect') == '' && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] > 0 && (in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create'))) 
 			{
