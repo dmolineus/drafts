@@ -13,7 +13,7 @@
  **/
 
 namespace Netzmacht\Drafts\DataContainer;
-use Netzmacht\Drafts\Model\DraftableModel, Input, DraftsModel, DC_Table, Contao\Database\Mysql\Result;
+use Netzmacht\Drafts\Model\DraftableModel, Input, DC_Table, Contao\Database\Mysql\Result;
 
 
 // initialize draft modules
@@ -488,64 +488,41 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	public function onCut($objDc)
 	{
 		//return;
-		$objModel = DraftableModel::findByPK($this->strTable, Input::get('id'), array('uncached'=>true));		
-		$objRelated = DraftableModel::findOneByDraftRelated($this->strTable, Input::get('id'), array('uncached'=>true));
+		$objModel = DraftableModel::findByPK($this->strTable, Input::get('id'), array('uncached'=>true));
+		$objModel->setVersioning(false);		
+		$objRelated = $objModel->getRelated();
 				
-		// no related exists, check if we need to create a new draft
-		if($objRelated === null && !$objModel->isDraft())
-		{
-			$objRelated = $objModel->prepareCopy();
-			$objRelated->save();
-				
-			$objModel->draftRelated = $objRelated->id;
-			$objModel->save();
-			
+		// no related exists, nothing to do
+		if($objRelated === null)
+		{	
 			return;
 		}
-			
-		// both are no drafts, draft was move into a live place
-		if(!$objRelated->isDraft() && !$objModel->isDraft())
+		
+		// NOTE: isDraft is not up to date here, because it checks draftState which is not yet updated
+		
+		// model, which was a draft, was moved into live mode, remove relation
+		// model, which was a live version, was moved into draft mode, remove relation
+		if((!$this->blnDraftMode && $objModel->isDraft() && !$objRelated->isDraft()) || ($this->blnDraftMode && !$objModel->isDraft() && $objRelated->isDraft()))
 		{
-			$objRelated->draftRelated = null;
-			$objModel->draftRelated = null;
-			$objModel->save();
-			
-			if(true) // TODO: check new parents
+			if($this->blnDraftMode)
 			{
-				$objNew = $objRelated->prepareCopy();
-				$objNew->sorting = $objRelated->sorting;				
-				$objNew->setState('delete');
-				$objNew->save(true);
-					
-				$objRelated->draftRelated = $objNew->id;
-				$objRelated->setVersioning(false);				
-				$objRelated->save();
+				$objModel->setState('draft');
+				$objRelated->setState('draft');
 			}
-
-			if(true) // TODO: check new parents
-			{			
-				$objNew = clone $objRelated;
-				$objNew->draftRelated = $objModel->id;
-				$objNew->sorting = $objModel->sorting;
-				$objNew->save(true);
-					
-				$objModel->draftRelated = $objNew->id;
-				$objModel->setVersioning(false);
-				$objModel->save();
+			else 
+			{
+				$objModel->draftState = 0;
+				$objModel->draftState = 0;
 			}
-		}
-
-		// both are drafts now, so remove relation
-		elseif($objRelated->isDraft() && $objModel->isDraft())
-		{
-			$objModel->draftRelated = null;
-			$objModel->save();
 			
 			$objRelated->draftRelated = null;
-			$objRelated->save();
+			$objModel->save();
+				
+			$objModel->draftRelated = null;
+			$objModel->save();
 		}
 		
-		// model has not moved to new parent, only update sortings
+		// model has not moved to new parent, update sortings
 		elseif(!$this->blnDraftMode && $objRelated->isDraft() && $objModel->pid == $objRelated->pid)
 		{			
 			$strQuery 	= 'SELECT t.id, t.draftState, j.sorting FROM ' . $this->strTable . ' t'
@@ -561,41 +538,35 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			while($objResult->next()) 
 			{
-				// sorting will be updated because live sorting was selected
+				// sorting will be updated because live sorting is used by select
 				$objNew = new DraftableModel($objResult, true, $this->strTable);
 				$objNew->tstamp = time();
 				$objNew->save();
 			}
 		}
 			
-		// move draft to new place
-		elseif($objModel->pid != $objRelated->pid && $objRelated->isDraft())
+		// live element was moved, move draft to new place as well
+		elseif(!$this->blnDraftMode && $objModel->pid != $objRelated->pid)
 		{
-			// new parent has also a draft
-			if(true) // TODO: check new parents
+			// it is in the same ptable, so move draft as well
+			if($objRelated->ptable == $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']) 
 			{
 				$objRelated->pid = $objModel->pid;
 				$objRelated->setState('draft');
 				$objRelated->sorting = $objModel->sorting;
 				$objRelated->save();
 			}
+			
+			// otherwise delete it because we do not know if it is also draftable
 			else 
 			{
 				$objRelated->delete();					
 			}
 		}
 		
-		// draft is moved
-		elseif($objModel->pid != $objRelated->pid && $objModel->draftState > 0)
-		{
-			// model has not moved to new parent
-			if($objRelated->pid == $objModel->pid)
-			{
-				return;
-			}
-			
-			// create new draft for formerly related and mark as delete, because it is moved to another place
-			$objNewDrafts = \DraftsModel::findOneByPidAndTable($objRelated->pid, $objRelated->ptable);	
+		// create new draft for formerly related and mark as delete, because it is moved to another place
+		elseif($this->blnDraftMode && $objModel->pid != $objRelated->pid)
+		{	
 			$objRelated->draftRelated = null;
 			$objModel->draftRelated = null;
 			$objModel->save();			
@@ -889,13 +860,12 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		$blnAccess = $this->hasAccessOnPublished();
+		$arrAttributes['value'] = $blnAccess;
 		
 		if($arrRow === null || isset($arrAttributes['hide']))
 		{
 			return $blnAccess;
 		}
-		
-		$arrAttributes['value'] = $blnAccess;
 		
 		return $this->buttonRuleDisableIcon($strButton, $strHref, $strLabel, $strTitle, $strIcon, $strAttributes, $arrAttributes);
 	}
