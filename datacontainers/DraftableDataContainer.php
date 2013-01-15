@@ -313,7 +313,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		if($this->blnDraftMode)
 		{
 			// filter draft elements 
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState=? OR (draftState > 0 AND draftRelated IS NULL))', '0');
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState>? OR (draftState = 0 AND draftRelated IS NULL))', '0');
 			
 			// data container
 			$GLOBALS['TL_DCA'][$this->strTable]['config']['dataContainer'] = 'DraftableTable';

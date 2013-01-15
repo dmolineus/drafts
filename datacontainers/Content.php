@@ -41,12 +41,6 @@ class Content extends DraftableDataContainer
 		$objModel = new DraftableModel($this->strTable);
 		$objModel->setRow($arrRow);
 		
-		if($this->blnDraftMode && $objModel->hasRelated())
-		{
-			$objModel = $objModel->getRelated();
-			$arrRow = $objModel->row();
-		}
-		
 		$key = $arrRow['invisible'] ? 'unpublished' : 'published'; 
 		$type = $GLOBALS['TL_LANG']['CTE'][$arrRow['type']][0] ?: '&nbsp;';
 		$class = 'limit_height';
