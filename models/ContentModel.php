@@ -31,8 +31,7 @@ class ContentModel extends Contao\ContentModel
 		}
 		elseif(!is_array($arrOptions['column']))
 		{
-			// try to find related one
-			// useful for ContentAlias for example
+			// try to find related one, useful for ContentAlias for example
 			if($blnPreview && $arrOptions['column'] == 'id')
 			{
 				$arrNew = $arrOptions;
@@ -46,7 +45,7 @@ class ContentModel extends Contao\ContentModel
 				}
 			}
 			
-			// load dca extrator so data container is loaded, can not use loadDataContainer is static context
+			// load dca extrator so data container is loaded, can not use loadDataContainer in static context
 			$objDca = new \DcaExtractor($t);
 			$strKey = $arrOptions['column'];
 			$arrKeys = $GLOBALS['TL_DCA'][$t]['config']['sql']['keys'];
@@ -59,8 +58,7 @@ class ContentModel extends Contao\ContentModel
 			
 			$arrOptions['column'] = array($arrOptions['column']);
 		}
-			
-			
+
 		// get all draft elements
 		if($blnPreview)
 		{
