@@ -1061,8 +1061,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 					$objModel->draftRelated = $objDraft->id;
 					$objModel->save();
 					
-					$this->reload();
-					
 					$objDc->setId($objDraft->id);
 					$this->intId = $objDc->id;
 				}
