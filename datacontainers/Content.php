@@ -136,6 +136,38 @@ class Content extends DraftableDataContainer
 
 
 	/**
+	 * filter alias elements so that only life elements are used
+	 * 
+	 * @return array
+	 */
+	public function getAlias()
+	{
+		$objContent = new \tl_content();
+		$arrAlias = $objContent->getAlias();
+		
+		$strPtable = $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] == 'tl_article' ? '(ptable=? OR ptable=\'\')' : 'ptable=?';
+		$objResult = $this->Database->prepare('SELECT id FROM ' . $this->strTable . ' WHERE ' . $strPtable . ' AND draftState>0')
+									->execute($GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
+		
+		$arrIds = $objResult->fetchEach('id');
+		
+		foreach ($arrAlias as $key => $value)
+		{
+			foreach ($arrIds as $intId)
+			{
+				if(isset($arrAlias[$key][$intId]))
+				{
+					unset($arrAlias[$key][$intId]);
+					unset($arrIds[$intId]);
+				}
+			}
+		}
+		
+		return $arrAlias;
+	}
+
+
+	/**
 	 * initialize the data container
 	 * Hook: loadDataContainer
 	 * 
@@ -165,9 +197,6 @@ class Content extends DraftableDataContainer
 		// check permission for operations in live mode
 		else
 		{
-			// permission rules
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('draftPermission');
-			
 			// global operations
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['all']['button_callback'] = array($strClass, 'generateGlobalButtonAll');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['all']['button_rules']	= array('hasAccessOnPublished', 'generate:table:id');

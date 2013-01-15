@@ -39,15 +39,16 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	protected $blnIsPublished = null;
 	
 	/**
+	 * store if parent view is used and not a single element is accessed
+	 * @param bool
+	 */
+	protected $blnParentView;
+	
+	/**
 	 * used int id
 	 * @param int
 	 */
 	protected $intId;
-	
-	/**
-	 * @param DraftsModel
-	 */
-	protected $objDraft;
 	
 	/**
 	 * current action
@@ -64,8 +65,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	public function __construct()
 	{
 		parent::__construct();
-		
-		$this->blnDraftMode = Input::get('draft') == '1';
+				
 		$this->strAction = Input::get('act') == '' ? Input::get('key') : Input::get('act');
 		
 		if(Input::get('tid') != null)
@@ -77,6 +77,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		{
 			$this->intId = Input::get('id');
 		}
+		
+		$this->blnDraftMode = Input::get('draft') == '1';
+		$this->blnParentView = in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create');
 	}
 	
 	
@@ -235,8 +238,59 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function initialize($objDc)
 	{
-		$this->initializeDraft($objDc);
-		$this->initializeModes($objDc);
+		// live mode
+		if(!$this->blnDraftMode)
+		{
+			$blnHasAccess = $this->hasAccessOnPublished();
+		
+			if($this->strAction != 'show' && Input::post('isAjaxRequest') == '')
+			{
+				$intState = !$this->isPublished() ? 2 : ($blnHasAccess ? 1 : 0);
+				\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][$intState] . '</p>');
+			}
+			
+			// disable sorting by adding space so Contao can not detect it as sortable
+			if(!$blnHasAccess && $this->isPublished() && $GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] == 'sorting')
+			{
+				$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] = 'sorting ';
+			}
+			
+			// default redirect to draft mode
+			if(Input::get('draft') == '' && Input::get('redirect') == '' && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] > 0 && $this->blnParentView) 
+			{
+				if(!$this->hasAccessOnPublished() || $GLOBALS['TL_CONFIG']['draftModeAsDefault'] == 2)
+				{
+					$this->redirect($this->addToUrl('draft=1'));
+				}
+			}
+		}
+		
+		// draft mode
+		elseif(!$this->blnParentView)
+		{
+			$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
+	
+			if($objModel->isDraft())
+			{
+				$objDc->setId($objModel->id);
+			}
+			elseif(!$objModel->hasRelated())
+			{
+				$objDraft = $objModel->prepareCopy(true);
+				$objDraft->save(true);
+				
+				$objModel->draftRelated = $objDraft->id;
+				$objModel->save();
+				
+				$objDc->setId($objDraft->id);
+				$this->intId = $objDc->id;
+			}
+			else
+			{
+				$objDc->setId($objModel->draftRelated);
+				$this->intId = $objDc->id;	
+			}
+		}
 	}
 	
 
@@ -390,15 +444,18 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	public function onCopy($insertID, $objDc)
 	{
 		// label copied element as new
-		if(!$this->blnDraftMode && $this->objDraft !== null)
+		if(!$this->blnDraftMode)
 		{
 			$objModel = DraftableModel::findByPK($this->strTable, $insertID);
 			
-			$objNew = $objModel->prepareCopy(true, true);
-			$objNew->save();
-			
-			$objModel->draftRelated = $objNew->id;
-			$objModel->save();
+			if($objModel->hasRelated)
+			{
+				$objNew = $objModel->prepareCopy(true, true);
+				$objNew->save();
+				
+				$objModel->draftRelated = $objNew->id;
+				$objModel->save();
+			}
 		}
 	}
 	
@@ -685,15 +742,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			$this->Database->prepare('UPDATE ' . $strTable . ' %s WHERE id=?')->set($arrSet)->executeUncached($intId);
 		}
 		// create new version of draft
-		elseif($this->objDraft !== null)
+		elseif($arrData['draftRelated'] > 0)
 		{
-			$objResult = $this->Database->prepare('SELECT id, draftRelated FROM ' . $this->strTable . ' WHERE id=?')->execute($intId);
-			
-			if($objResult->numRows == 1 && $objResult->draftRelated > 0)
-			{
-				$objModel = DraftableModel::findByPK($this->strTable, $intId)->prepareCopy(); 
-				$objModel->save();
-			}
+			$objModel = new DraftableModel($this->strTable);
+			$objModel->setRow($arrData);
+			$objModel->prepareCopy()->save();
 		}
 	}
 	
@@ -725,13 +778,10 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		// udate draft to newest live version
-		elseif($this->objDraft !== null)
+		elseif($objDc->activeRecord->draftRelated != null)
 		{
-			if($objDc->activeRecord->draftRelated != null)
-			{
-				$objNew = $objModel->prepareCopy();
-				$objNew->save();
-			}
+			$objNew = $objModel->prepareCopy();
+			$objNew->save();
 		}
 	}
 
@@ -745,24 +795,12 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function onToggleVisibility($blnVisible, $objDc)
 	{
-		if($this->blnDraftMode)
+		if(!$this->blnDraftMode)
 		{
-			return $blnVisible;
-		}
-		
-		$strField = 'id';
-		
-		// ajax request
-		if($this->objDraft === null && get_class($objDc) == get_class($this))
-		{
-			$this->objDraft = $objDc;
-			$strField = 'draftRelated';
-		}
-		
-		if($this->objDraft !== null)
-		{
+			// ajax request => get_class($objDc) == get_class($this)
+			$strField = get_class($objDc) == get_class($this) ? 'draftRelated' : 'id';
 			$objModel = DraftableModel::findOneBy($this->strTable, $strField, $strField == 'id' ? $objDc->activeRecord->draftRelated : $this->intId);
-			
+				
 			if($objModel !== null && $blnVisible != $objModel->invisible)
 			{
 				$objModel->setVersioning(true);
@@ -879,15 +917,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	{
 		$blnMode = isset($arrAttributes['draft']) ? (Input::get('draft') == '1') : (Input::get('draft') != '1');
 
-		if(($this->objDraft === null && !$this->isPublished()) || $blnMode)
+		if(!$this->isPublished() || $blnMode)
 		{
 			return false;
-		}
-		
-		if(isset($arrAttributes['draft']))
-		{
-			$strHref .= '&amp;table=' . $this->strTable . ($this->objDraft === null ? '&amp;mode=create' : '') . '&amp;id=' . $this->intId;
-			return true;
 		}
 
 		$strHref .= '&amp;table=' . $this->strTable . '&amp;id=' . $this->intId;
@@ -909,7 +941,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected function buttonRuleTaskButton(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		if($this->objDraft === null || !in_array('tasks', $this->Config->getActiveModules()) || !$GLOBALS['TL_CONFIG']['draftUseTaskModule'])
+		if(!in_array('tasks', $this->Config->getActiveModules()) || !$GLOBALS['TL_CONFIG']['draftUseTaskModule'])
 		{
 			return false;
 		}
@@ -917,7 +949,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		$arrAttributes['plain'] = true;
 		$arrAttributes['__set__'][] = 'plain';
 
-		$strHref = 'system/modules/drafts/task.php?id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN;
+		// TODO: task link
+		//$strHref = 'system/modules/drafts/task.php?id=' . $this->obj2Draft->id . '&rt=' . REQUEST_TOKEN;
 		return true;
 	}
 
@@ -931,136 +964,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	{
 		return $this->User->hasAccess($this->strTable . '::published', 'alexf');		
 	}
-	
-	
-	/**
-	 * create initial draft version
-	 * 
-	 * @return void
-	 */
-	protected function initializeDraft($objDc)
-	{
-		if(in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create'))
-		{
-			$this->objDraft = DraftsModel::findOneByPidAndTable($this->intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
-		}
-		else 
-		{		
-			$strQuery = 'SELECT * FROM tl_drafts WHERE pid=(SELECT pid FROM ' . $this->strTable. ' WHERE id=?) AND ptable=?';
-			$objResult = $this->Database->prepare($strQuery)->execute($this->intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
-			
-			if($objResult->numRows > 0)
-			{
-				$this->objDraft = new DraftsModel($objResult);
-			}
-		}
-
-		// create draft
-		//  || (Input::get('draft') == '' && !$this->blnDraftMode && !$this->hasAccessOnPublished() && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] == 1) 
-		if((Input::get('mode') == 'create' && $this->strAction == null))
-		{
-			if($this->objDraft === null)
-			{
-				$this->objDraft = new DraftsModel;
-				$this->objDraft->pid = $this->intId;
-				$this->objDraft->ptable = $objDc->parentTable;
-				$this->objDraft->tstamp = time();
-				$this->objDraft->ctable = $this->strTable;
-				$this->objDraft->module = Input::get('do');
-				$this->objDraft->save();
-
-				// btw: Why does COntao not just update every empty ptable of tl_content to tl_article???
-				/*
-				$strFoo = ($this->objDraft->ptable == 'tl_article' ? '(ptable=? OR ptable=\'\')' : 'ptable=?');
-				$objResult = $this->Database->prepare('SELECT * FROM ' . $this->strTable . ' WHERE pid=? AND ' . $strFoo)->execute($this->objDraft->pid, $this->objDraft->ptable);
-
-				while($objResult->next())
-				{
-					$objModel = new DraftableModel($objResult, true, $this->strTable);
-
-					$objNew = $objModel->prepareCopy();
-					$objNew->pid = $this->objDraft->id;
-					$objNew->save(true);					
-					
-					$objModel->draftRelated = $objNew->id;
-					$objModel->tstamp = time();
-					$objModel->save();
-				}*/
-			}
-			
-			$this->redirect('contao/main.php?do=' . Input::get('do') . '&table=' . $this->strTable . '&draft=1&id=' . $this->objDraft->id .'&rt=' . REQUEST_TOKEN);
-		}
-
-		if($this->blnDraftMode && $this->objDraft === null)
-		{
-			$this->triggerError('No Draft Model found', initializeDraft);
-		}
-	}
-	
-	
-	/**
-	 * initial modes
-	 */
-	protected function initializeModes($objDc)
-	{
-		// live mode
-		if(!$this->blnDraftMode)
-		{
-			$blnHasAccess = $this->hasAccessOnPublished();
-		
-			if($this->strAction != 'show' && Input::post('isAjaxRequest') == '')
-			{
-				$intState = !$this->isPublished() ? 2 : ($blnHasAccess ? 1 : 0);
-				\Message::addRaw('<p class="tl_warning">' . $GLOBALS['TL_LANG'][$this->strTable]['livemodewarning'][$intState] . '</p>');
-			}
-			
-			// disable sorting by adding space so Contao can not detect it as sortable
-			if(!$blnHasAccess && $this->isPublished() && $GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] == 'sorting')
-			{
-				$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] = 'sorting ';
-			}
-			
-							
-			// default redirect to draft mode
-			if(Input::get('draft') == '' && Input::get('redirect') == '' && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] > 0 && (in_array($this->strAction, array(null, 'select', 'create')) || ($this->strAction == 'paste' && Input::get('mode') == 'create'))) 
-			{
-				if($this->objDraft !== null && (!$this->hasAccessOnPublished() || $GLOBALS['TL_CONFIG']['draftModeAsDefault'] == 2))
-				{
-					$this->redirect('contao/main.php?do=' . Input::get('do') . '&table='. $this->strTable . '&draft=1&id=' . $this->objDraft->id . '&rt=' . REQUEST_TOKEN);
-				}
-			}
-		}
-		
-		//
-		else
-		{
-			if(!in_array($this->strAction, array(null, 'select', 'create')) && !($this->strAction == 'paste' && Input::get('mode') == 'create'))
-			{
-				$objModel = DraftableModel::findByPK($this->strTable, $this->intId);
-	
-				if($objModel->isDraft())
-				{
-					$objDc->setId($objModel->id);
-				}
-				elseif(!$objModel->hasRelated())
-				{
-					$objDraft = $objModel->prepareCopy(true);
-					$objDraft->save(true);
-					
-					$objModel->draftRelated = $objDraft->id;
-					$objModel->save();
-					
-					$objDc->setId($objDraft->id);
-					$this->intId = $objDc->id;
-				}
-				else
-				{
-					$objDc->setId($objModel->draftRelated);
-					$this->intId = $objDc->id;	
-				}
-			}
-		}
-	}
 
 
 	/**
@@ -1072,9 +975,29 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	protected function isPublished($arrRow=null)
 	{
 		$intId = ($arrRow !== null ? $arrRow['pid'] : $this->intId);
-		$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . ' WHERE id=' . $intId;
+		
+		if($intId == $this->intId && $this->blnIsPublished !== null)
+		{
+			return $this->blnIsPublished;
+		}
+		
+		if($this->blnParentView)
+		{
+			$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . ' WHERE id=' . $intId;			
+		}
+		else 
+		{
+			$strQuery 	= 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] 
+						. ' WHERE id=(SELECT pid FROM ' . $this->strTable . ' WHERE id=' . $intId . ')';
+		}
 
-		return (bool) $this->Database->query($strQuery)->published;
+		if($intId == $this->intId && $this->blnIsPublished !== null)
+		{
+			$this->blnIsPublished = $this->Database->query($strQuery)->published;
+			return $this->blnIsPublished;
+		}
+
+		return $this->Database->query($strQuery)->published;;
 	}
 
 
@@ -1089,149 +1012,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	protected function permissionRuleHasAccessOnPublished($objDc, &$arrAttributes, &$strError)
 	{
 		return !$this->isPublished() || !$this->permissionRuleGeneric($objDc, $arrAttributes, $strError) || $this->hasAccessOnPublished();
-	}
-	
-	
-	/**
-	 * check permission for draft mode
-	 *  
-	 * @param Dc_Table
-	 * @param array
-	 * @param string
-	 * @return bool
-	 */
-	protected function permissionRuleDraftPermission($objDc, &$arrAttributes, &$strError)
-	{
-		return true;
-		// Live mode
-
-		// permission is already granted by default dca checkPermission 
-		// Prepare permission checking for draft mode
-		if(!$this->blnDraftMode)
-		{
-			if(!in_array($this->strAction, array(null, 'select', 'create', 'toggle')))
-			{
-				return true;
-			}
-			
-			$intPerm = $this->objDraft->id;
-			$this->Session->set('draftPermission', $intPerm);
-			
-			// redirect back to draft mode
-			if(Input::get('redirect') == '1' && $this->objDraft !== null)
-			{				
-				if(Input::get('ttid'))
-				{
-					$tid = '&tid=' . Input::get('ttid');
-					$intId = Input::get('ttid');
-				}
-				else
-				{
-					$tid = '';
-					$intId = $this->objDraft->id;
-				}
-				
-				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&draft=1&redirect=2%s&rt=%s', Input::get('do'), $this->strTable, $intId, $tid, REQUEST_TOKEN));
-			}
-			
-			// redirect back to task module
-			elseif (Input::get('redirect') == 'task') 
-			{
-				$this->redirect(sprintf('contao/main.php?do=tasks&act=edit&id=%s&redirect=2&rt=%s', Input::get('taskid'), REQUEST_TOKEN));
-			}
-			
-			return true;
-		}		
-		
-		// Draft Mode 
-		
-		// only check if no key attribute is given, key checking is rule based
-		// access is stored in session, so check it first
-		$intPerm = $this->Session->get('draftPermission');
-
-		if(Input::get('key') != '' || $intPerm == $this->objDraft->id)
-		{
-			return true;
-		}
-		
-		// check access to root
-		if(in_array($this->strAction, array(null, 'select', 'create', 'toggle')) || $this->strAction == 'paste' && Input::get('mode') == 'create')
-		{
-			if(Input::get('redirect') == '2')
-			{
-				return false;
-			}
-			
-			// passby toggling id
-			$tid = '';
-			if(Input::get('tid'))
-			{
-				$objModel = DraftableModel::findOneBy($this->strTable, 'draftRelated', Input::get('tid'));
-				
-				if($objModel !== null)
-				{
-					$tid = '&ttid=' . Input::get('tid');					
-				}
-				else 
-				{
-					return true;
-				}
-			}
-				
-			$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=1%s&rt=%s', Input::get('do'), $this->strTable, $this->objDraft->pid, $tid, REQUEST_TOKEN));			
-		}
-
-		// check permission for child element
-		$objDraft = DraftableModel::findByPK($this->strTable, $this->intId);
-		$objModel = $objDraft->getRelated();
-		
-		if($objModel === null)
-		{
-			if($objDraft->hasState('new'))
-			{
-				return true;
-			}
-			
-			return false;
-		}
-		
-		// fake ids to run original check permission method
-		Input::setGet('id', $objModel->id);
-		$intPid = Input::get('pid');
-		
-		if($intPid !== null)
-		{
-			if(Input::get('mode') == '2')
-			{
-				Input::setGet('pid', $this->objDraft->pid);
-			}
-			else 
-			{
-				$objModel = DraftableModel::findOneBy($this->strTable, 'draftRelated', $intPid);
-				
-				if($objModel !== null)
-				{
-					Input::setGet('pid', $objModel->id);					
-				}
-				// pid is new element so grant access
-				else
-				{
-					return true;
-				}
-			}
-		}
-
-		$strClass = $arrAttributes['class'];
-		$this->import($strClass);
-		$this->$strClass->checkPermission($objDc);
-		Input::setGet('id', $this->intId);
-		
-		if($intPid !== null)
-		{
-			Input::setGet('pid', $intPid);
-		}
-		
-		return true;
 	}
 	
 	

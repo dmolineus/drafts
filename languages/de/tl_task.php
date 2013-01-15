@@ -12,7 +12,6 @@
  *  
  **/
 
-
 // tasks
-$GLOBALS['TL_LANG']['tl_drafts']['draftTaskTitle'] = '%s ID %s: %s';
-$GLOBALS['TL_LANG']['tl_drafts']['draftTaskNoTitle'] = 'no title';
+$GLOBALS['TL_LANG']['tl_task']['draftTaskTitle'] = '%s ID %s: %s';
+$GLOBALS['TL_LANG']['tl_task']['draftTaskNoTitle'] = 'ohne Titel';

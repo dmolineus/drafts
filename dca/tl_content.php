@@ -17,6 +17,8 @@
 $GLOBALS['TL_DCA']['tl_content']['config']['sql']['keys']['draftRelated'] 	= 'unique';
 
 // fields
+$GLOBALS['TL_DCA']['tl_content']['fields']['cteAlias']['options_callback'] = array('Netzmacht\Drafts\DataContainer\Content', 'getAlias');
+			
 $GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated'] = array
 (
 	'sql' 						=> "int(10) unsigned NULL",
