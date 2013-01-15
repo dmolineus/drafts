@@ -106,15 +106,6 @@ class Content extends DraftableDataContainer
 				}
 			}
 			
-			static $blnLabelsRendered = false;
-			
-			if(!$blnLabelsRendered)
-			{
-				$strLabels = '<script>var DraftLabels = { sorted: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_sorted'] . '\''
-							.', visibility: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_visibility'] .  '\'};</script>';
-				$blnLabelsRendered = true;
-			}
-			
 			// pass draft labels as javascript
 			if(!empty($arrState))
 			{
@@ -125,6 +116,15 @@ class Content extends DraftableDataContainer
 					$label .= sprintf('<div class="draft_label %s">%s</div>', $strState, $GLOBALS['TL_LANG'][$this->strTable]['draftState_' . $strState]);			
 				}
 			}
+		}
+		
+		static $blnLabelsRendered = false;
+			
+		if(!$blnLabelsRendered)
+		{
+			$strLabels = '<script>var DraftLabels = { sorted: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_sorted'] . '\''
+						.', visibility: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_visibility'] .  '\'};</script>';
+			$blnLabelsRendered = true;
 		}
 		
 		return $strLabels . sprintf
