@@ -20,6 +20,11 @@ abstract class ContentElement extends Contao\ContentElement
 {
 	
 	/**
+	 * @var bool 
+	 */
+	protected $blnPreview;
+	
+	/**
 	 * constructor switch to draft
 	 * 
 	 * @param Model|Model\Collection
@@ -31,7 +36,9 @@ abstract class ContentElement extends Contao\ContentElement
 			$objElement = $objElement->current();
 		}
 		
-		if(TL_MODE == 'FE' && Input::cookie('DRAFT_MODE') == '1' && $objElement->ptable != 'tl_drafts' && $objElement->draftRelated !== null)
+		$this->blnPreview = TL_MODE == 'FE' && Input::cookie('DRAFT_MODE') == '1';
+		
+		if($this->blnPreview && $objElement->ptable != 'tl_drafts' && $objElement->draftRelated !== null)
 		{
 			$objElement = $objElement->getRelated('draftRelated');
 		}
@@ -39,4 +46,23 @@ abstract class ContentElement extends Contao\ContentElement
 		parent::__construct($objElement);
 	}
 	
+	
+	/**
+	 * generate content element will deleted one in preview view
+	 */
+	public function generate()
+	{
+		if($this->blnPreview && $this->objModel->ptable == 'tl_drafts')
+		{
+			$objModel = new Netzmacht\Drafts\Model\DraftableModel($this->objModel);
+			
+			if($objModel->hasState('delete'))
+			{
+				return '';
+			}
+		}
+		
+		return parent::generate();
+	}
+	 
 }
