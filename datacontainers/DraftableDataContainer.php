@@ -276,13 +276,14 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			}
 			elseif(!$objModel->hasRelated())
 			{
-				$objDraft = $objModel->prepareCopy(true);
-				$objDraft->save(true);
+				$objRelated = $objModel->prepareCopy(true);
+				$objRelated->save(true);
 				
-				$objModel->draftRelated = $objDraft->id;
+				$objModel->draftRelated = $objRelated->id;
 				$objModel->save();
-				
-				$objDc->setId($objDraft->id);
+
+				Input::setGet('id', $objRelated->id);
+				$objDc->setId($objRelated->id);
 				$this->intId = $objDc->id;
 			}
 			else
@@ -487,10 +488,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function onCut($objDc)
 	{
-		//return;
 		$objModel = DraftableModel::findByPK($this->strTable, Input::get('id'), array('uncached'=>true));
-		$objModel->setVersioning(false);		
-		$objRelated = $objModel->getRelated();
+		$objModel->setVersioning(false);
+		
+		$objRelated = DraftableModel::findOneByDraftRelated($this->strTable, Input::get('id'), array('uncached'=>true));
+		$objRelated->setVersioning(false);
 				
 		// no related exists, nothing to do
 		if($objRelated === null)
