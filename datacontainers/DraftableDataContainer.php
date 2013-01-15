@@ -65,7 +65,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	public function __construct()
 	{
 		parent::__construct();
-				
+		
 		$this->strAction = Input::get('key') == '' ? Input::get('act') : Input::get('key');
 		
 		if(Input::get('tid') != null)
@@ -176,8 +176,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function generateSubmitButtons($objDc)
 	{
-		// Apply Drafts
-		if(\Input::post('applyDrafts') !== null)
+		if(\Input::post('applyDrafts') !== null || \Input::post('resetDrafts') !== null)
 		{
 			$arrIds = Input::post('IDS');
 			
@@ -188,7 +187,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			$strQuery = 'SELECT * FROM ' . $this->strTable . ' WHERE draftState > 0 AND ' . $this->Database->findInSet('id', $arrIds);
 			$objResult = $this->Database->query($strQuery);
-
+		}
+		
+		// Apply Drafts
+		if(\Input::post('applyDrafts') !== null)
+		{
 			while($objResult->next())
 			{
 				$objModel = new DraftableModel($objResult, false, $this->strTable);
@@ -201,16 +204,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// Reset Drafts
 		elseif(\Input::post('resetDrafts') !== null)
 		{
-			$arrIds = \Input::post('IDS');
-			
-			if(!is_array($arrIds) || empty($arrIds))
-			{
-				$this->redirect($this->getReferer());
-			}
-			
-			$strQuery = 'SELECT id FROM ' . $this->strTable . ' WHERE draftState > 0 AND ' . $this->Database->findInSet('id', $arrIds);
-			$objResult = $this->Database->query($strQuery);
-
 			while($objResult->next())
 			{
 				$objDc->setId($objResult->id);
