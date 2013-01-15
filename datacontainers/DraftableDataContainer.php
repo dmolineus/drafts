@@ -66,7 +66,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	{
 		parent::__construct();
 				
-		$this->strAction = Input::get('act') == '' ? Input::get('key') : Input::get('act');
+		$this->strAction = Input::get('key') == '' ? Input::get('act') : Input::get('key');
 		
 		if(Input::get('tid') != null)
 		{
@@ -397,7 +397,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				'draftReset' => array
 				(
 					'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftReset'],
-					'href' 				=> 'key=reset',
+					'href' 				=> 'act=draft&amp;key=reset',
 					'icon'				=> 'system/modules/drafts/assets/reset.png',
 					'button_callback' 	=> array($strClass, 'generateButtonDraftReset'),
 					'button_rules' 		=> array('draftState', 'generate'),
@@ -406,7 +406,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				'draftApply' => array
 				(
 					'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftApply'],
-					'href' 				=> 'key=apply',
+					'href' 				=> 'act=draft&amp;key=apply',
 					'icon'				=> 'system/modules/drafts/assets/publish.png',
 					'button_callback' 	=> array($strClass, 'generateButtonDraftApply'),
 					'button_rules' 		=> array('draftState', 'hasAccessOnPublished', 'generate'),
@@ -821,7 +821,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 * @param bool
 	 */
 	public function resetDraft($objDc, $blnDoNoRedirect=false)
-	{	
+	{
 		$objDc->delete(true);
 		
 		if(!$blnDoNoRedirect)
