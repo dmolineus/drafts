@@ -318,9 +318,54 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function onCopyParent($insertID, $objDc)
 	{
-		$strPtable = $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] == 'tl_article' ? '(ptable=? OR ptable=\'\')' : 'ptable=?';
-		$this->Database->prepare('DELETE FROM ' . $this->strTable . ' WHERE pid=? AND ' . $strPtable . ' AND draftState >0')
-					   ->execute($insertID, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
+		$arrChildTable = $objDc->childTable;
+		
+		// no childTable given
+		if(empty($arrChildTable))
+		{
+			return;
+		}
+		
+		$intId = null;
+		
+		// direct parent was called, 
+		if(in_array($this->strTable, $arrChildTable))
+		{
+			$intId = $insertID;
+		}
+		// check 2nd level, contao only support 2 levels for recursive children copy
+		else
+		{
+			foreach ($arrChildTable as $strTable) 
+			{
+				$this->loadDataContainer($strTable);
+				
+				// make sure that current data container is on of the parents
+				if(in_array($this->strTable, $GLOBALS['TL_DCA'][$strTable]['config']['ctable']))
+				{
+					// check if ptable is set
+					if($GLOBALS['TL_DCA'][$strTable]['config']['dynamicPtable'])
+					{
+						$strPtable = $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] == 'tl_article' ? '(ptable=? OR ptable=\'\')' : 'ptable=?';
+						$intId = $this->Database->prepare('SELECT id FROM ' . $strTable . ' WHERE pid=? AND ' . $strPtable)
+												->execute($insertID, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'])->id;
+					}
+					else
+					{
+						$intId = $this->Database->prepare('SELECT id FROM ' . $strTable . ' WHERE pid=?')->execute($insertID)->id;						
+					}
+					
+					break;					
+				}				
+			}
+		}
+		
+		if($intId !== null)
+		{
+			$strPtable = $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] == 'tl_article' ? '(ptable=? OR ptable=\'\')' : 'ptable=?';
+			$obj = $this->Database	->prepare('DELETE FROM ' . $this->strTable . ' WHERE pid=? AND ' . $strPtable . ' AND draftState >0')
+							->execute($intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
+		}
 	}
 	
 	
@@ -596,9 +641,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			{
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['oncut_callback'][] = array($strClass, 'onCut');
 			}
-
-			// register on copy callback to parent
-			if(is_array($GLOBALS['TL_DCA'][$strTable]['config']['ctable']) && in_array($this->strTable, $GLOBALS['TL_DCA'][$strTable]['config']['ctable']))
+			
+			// register on copy callback to check if parent was moved
+			else
 			{
 				$GLOBALS['TL_DCA'][$strTable]['config']['oncopy_callback'][] = array($strClass, 'onCopyParent');
 			}
