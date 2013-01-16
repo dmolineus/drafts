@@ -174,9 +174,9 @@ class Content extends DraftableDataContainer
 	 * @param string
 	 * @param bool
 	 */
-	public function initializeDataContainer($strTable)
+	public function onLoadDataContainer($strTable)
 	{
-		if(!parent::initializeDataContainer($strTable))
+		if(!parent::onLoadDataContainer($strTable))
 		{
 			return false;
 		}
