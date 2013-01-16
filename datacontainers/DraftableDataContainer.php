@@ -108,7 +108,13 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 
 			if($objModel === null)
 			{
-				$this->triggerError('Invalid approach to apply draft. No draft found', 'applyDraft', $blnDoNoRedirect);				
+				$this->log('Invalid approach to apply draft. No draft found', get_class($this) . ' applyDraft()', TL_ERROR);
+				
+				if(!$blnDoNoRedirect)
+				{
+					$this->redirect('contao/main.php?act=error');
+				}
+				
 				return;
 			}
 		}
@@ -964,25 +970,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	protected function permissionRuleHasAccessOnPublished($objDc, &$arrAttributes, &$strError)
 	{
 		return !$this->isPublished() || !$this->permissionRuleGeneric($objDc, $arrAttributes, $strError) || $this->hasAccessOnPublished();
-	}
-	
-	
-	/**
-	 * triggers an error saves the log message and redirect
-	 * 
-	 * @param string error message
-	 * @param string method
-	 * @param bool set true if no redirect
-	 * @param int error type
-	 */
-	protected function triggerError($strError, $strMethod, $blnDoNoRedirect=false, $intTye=TL_ERROR)
-	{
-		$this->log($strError, get_class($this) . ' ' . $strMethod . '()', $intTye);
-				
-		if(!$blnDoNoRedirect)
-		{
-			$this->redirect('contao/main.php?act=error');
-		}
 	}
 	
 }
