@@ -932,35 +932,27 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	/**
 	 * check if content is already published
 	 * 
-	 * @param array|null current row
 	 * @return bool
 	 */
-	protected function isPublished($arrRow=null)
+	protected function isPublished()
 	{
-		$intId = ($arrRow !== null ? $arrRow['pid'] : $this->intId);
-		
-		if($intId == $this->intId && $this->blnIsPublished !== null)
+		if($this->blnIsPublished !== null)
 		{
 			return $this->blnIsPublished;
 		}
 		
 		if($this->blnParentView)
 		{
-			$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . ' WHERE id=' . $intId;			
+			$strQuery = 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . ' WHERE id=' . $this->intId;			
 		}
 		else 
 		{
 			$strQuery 	= 'SELECT published FROM ' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] 
-						. ' WHERE id=(SELECT pid FROM ' . $this->strTable . ' WHERE id=' . $intId . ')';
+						. ' WHERE id=(SELECT pid FROM ' . $this->strTable . ' WHERE id=' . $this->intId . ')';
 		}
 
-		if($intId == $this->intId && $this->blnIsPublished !== null)
-		{
-			$this->blnIsPublished = $this->Database->query($strQuery)->published;
-			return $this->blnIsPublished;
-		}
-
-		return $this->Database->query($strQuery)->published;
+		$this->blnIsPublished = (bool) $this->Database->query($strQuery)->published;
+		return $this->blnIsPublished;
 	}
 
 
