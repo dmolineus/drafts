@@ -252,15 +252,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			{
 				$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['fields'][0] = 'sorting ';
 			}
-			
-			// default redirect to draft mode
-			if(Input::get('draft') == '' && Input::get('redirect') == '' && $GLOBALS['TL_CONFIG']['draftModeAsDefault'] > 0 && $this->blnParentView) 
-			{
-				if(!$this->hasAccessOnPublished() || $GLOBALS['TL_CONFIG']['draftModeAsDefault'] == 2)
-				{
-					$this->redirect($this->addToUrl('draft=1'));
-				}
-			}
 		}
 		
 		// draft mode
@@ -594,7 +585,14 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		if($strTable != $this->strTable || !in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
 		{
 			return false;
-		}		
+		}
+		
+		// force draft mode
+		if(Input::get('table') == $this->strTable && Input::get('draft') == '' && $this->isPublished() && !$this->hasAccessOnPublished())
+		{
+			$this->blnDraftMode = true;
+			Input::setGet('draft', 1);
+		}
 		
 		// GENERAL SETTINGS
 		
@@ -651,7 +649,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			
 			// data container
 			$GLOBALS['TL_DCA'][$this->strTable]['config']['dataContainer'] = 'DraftableTable';
-				
+			
 			// callbacks
 			$GLOBALS['TL_DCA'][$this->strTable]['edit']['buttons_callback'][] = array($strClass, 'generateSubmitButtons');
 
@@ -926,7 +924,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected function hasAccessOnPublished()
 	{
-		return $this->User->hasAccess($this->strTable . '::published', 'alexf');		
+		return $this->User->hasAccess($GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . '::published', 'alexf');		
 	}
 
 
