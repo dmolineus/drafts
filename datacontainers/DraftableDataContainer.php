@@ -817,7 +817,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		$objModel = new DraftableModel($this->strTable);
 		$objModel->setRow($arrRow);
 
-		if(!$objModel->hasRelated() && !$objModel->isDraft())
+		if(!$objModel->isDraft() && !$objModel->hasRelated())
 		{
 			return false;
 		}
