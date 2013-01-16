@@ -424,6 +424,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			if($objRelated->ptable == $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']) 
 			{
 				$objRelated->pid = $objModel->pid;
+				$objRelated->ptable = $objModel->ptable;
 				$objRelated->setState('draft');
 				$objRelated->sorting = $objModel->sorting;
 				$objRelated->save();
@@ -436,26 +437,22 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			}
 		}
 		
-		// create new draft for formerly related and mark as delete, because it is moved to another place
+		// draft was moved to new parent, label original as to delete
 		elseif($this->blnDraftMode && $objModel->pid != $objRelated->pid)
 		{	
-			$objRelated->draftRelated = 0;
 			$objModel->draftRelated = 0;
 			$objModel->save();			
-			
-			if($objNewDrafts !== null)
-			{				
-				$objNew = clone $objModel;
-				$objNew->draftRelated = $objRelated->id;
-				$objNew->sorting = $objRelated->sorting;	
-				$objNew->setState('delete');
-				$objNew->setState('draft');
-				$objNew->setVersioning(true);
-				$objNew->save(true);
+					
+			$objNew = clone $objModel;
+			$objNew->ptable = $objRelated->ptable;
+			$objNew->draftRelated = $objRelated->id;
+			$objNew->sorting = $objRelated->sorting;	
+			$objNew->setState('delete');
+			$objNew->setState('draft');
+			$objNew->setVersioning(true);
+			$objNew->save(true);
 				
-				$objRelated->draftRelated = $objNew->id;
-			}
-
+			$objRelated->draftRelated = $objNew->id;
 			$objRelated->setVersioning(false);
 			$objRelated->save();
 		}
