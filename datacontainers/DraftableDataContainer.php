@@ -589,7 +589,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			// register on copy callback to parent
 			if(is_array($GLOBALS['TL_DCA'][$strTable]['config']['ctable']) && in_array($this->strTable, $GLOBALS['TL_DCA'][$strTable]['config']['ctable']))
 			{
-				
 				$GLOBALS['TL_DCA'][$strTable]['config']['oncopy_callback'][] = array($strClass, 'onCopyParent');
 			}
 		}
