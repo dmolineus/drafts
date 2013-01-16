@@ -290,147 +290,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			}
 		}
 	}
-	
-
-	/**
-	 * initialize the data container
-	 * Hook: loadDataContainer
-	 * 
-	 * @param string
-	 * @param bool
-	 */
-	public function initializeDataContainer($strTable)
-	{
-		$strClass = get_class($this);
-		
-		// register onCut callback if any module use draft modules
-		if($strTable == $this->strTable && !empty($GLOBALS['TL_CONFIG']['draftModules']))
-		{
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['oncut_callback'][] = array($strClass, 'onCut');
-		}
-		
-		if($strTable != $this->strTable || !in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
-		{
-			return false;
-		}		
-		
-		// GENERAL SETTINGS
-		
-		// register callbacks
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['onload_callback'][] 		= array($strClass, 'initialize');
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['onload_callback'][] 		= array($strClass, 'checkPermission');				
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncopy_callback'][] 		= array($strClass, 'onCopy');
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncreate_callback'][] 	= array($strClass, 'onCreate');		
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['ondelete_callback'][] 	= array($strClass, 'onDelete');
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['onrestore_callback'][] 	= array($strClass, 'onRestore');
-		$GLOBALS['TL_DCA'][$this->strTable]['config']['onsubmit_callback'][] 	= array($strClass, 'onSubmit');			
-		$GLOBALS['TL_DCA'][$this->strTable]['fields']['invisible']['save_callback'][] = array($strClass, 'onToggleVisibility');
-		
-		// register global operations
-		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['live'] = array
-		(
-			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['livemode'],
-			'href' 				=> 'draft=0',
-			'class'				=> 'header_live',
-			'button_callback' 	=> array($strClass, 'generateGlobalButtonLive'),
-			'button_rules' 		=> array('switchMode', 'generate'),
-		);
-			
-		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['draft'] = array
-		(
-			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftmode'],
-			'href' 				=> 'draft=1',
-			'class'				=> 'header_draft',
-			'button_callback' 	=> array($strClass, 'generateGlobalButtonDraft'),
-			'button_rules' 		=> array('switchMode:draft', 'generate'),
-		);
-		
-		$strAttributes = sprintf('onclick="Backend.openModalIframe({\'width\':770,\'title\':\'%s\',\'url\':this.href});'
-								.'draftAddSubmitButton(\'%s\');return false"', 
-								$GLOBALS['TL_LANG'][$this->strTable]['task'][0],
-								$GLOBALS['TL_LANG'][$this->strTable]['task'][2]
-		);
-			
-		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['task'] = array
-		(
-			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['task'],
-			'href' 				=> 'system/modules/drafts/task.php?do=' . Input::get('do') . '&amp;table=' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . '&amp;id=' . $this->intId . '&amp;rt=' . REQUEST_TOKEN,
-			'class'				=> 'header_task',
-			'attributes'		=> $strAttributes,
-			'button_callback' 	=> array($strClass, 'generateGlobalButtonTask'),
-			'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate:plain'),
-		);
-		
-		// DRAFT MODE SETTINGS		
-		if($this->blnDraftMode)
-		{
-			// filter draft elements 
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState>? OR (draftState = 0 AND draftRelated IS NULL))', '0');
-			
-			// data container
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['dataContainer'] = 'DraftableTable';
-				
-			// callbacks
-			$GLOBALS['TL_DCA'][$this->strTable]['edit']['buttons_callback'][] = array($strClass, 'generateSubmitButtons');
-
-			// set relation to eagerly
-			$GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated']['relation']['load'] = 'eager';
-		
-			// permission rules
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('generic:key=[,reset,apply]', 'hasAccessOnPublished:key=apply');
-			
-			// insert draft operation buttons
-			array_insert($GLOBALS['TL_DCA'][$this->strTable]['list']['operations'], 1, array
-			( 
-				'draftDiff' => array
-				(
-					'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftDiff'],
-					'href' 				=> 'system/modules/drafts/diff.php',
-					'icon'				=> 'diff.gif',
-					'attributes'		=> 'onclick="Backend.openModalIframe({\'width\':860,\'title\':\'Unterschiede anzeigen\',\'url\':this.href});return false"',
-					'button_callback' 	=> array($strClass, 'generateButtonDraftDiff'),
-					'button_rules' 		=> array('draftState:modified', 'generate:plain:table:id'),
-				),
-				
-				'draftReset' => array
-				(
-					'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftReset'],
-					'href' 				=> 'act=draft&amp;key=reset',
-					'icon'				=> 'system/modules/drafts/assets/reset.png',
-					'button_callback' 	=> array($strClass, 'generateButtonDraftReset'),
-					'button_rules' 		=> array('draftState', 'generate'),
-				),
-				
-				'draftApply' => array
-				(
-					'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftApply'],
-					'href' 				=> 'act=draft&amp;key=apply',
-					'icon'				=> 'system/modules/drafts/assets/publish.png',
-					'button_callback' 	=> array($strClass, 'generateButtonDraftApply'),
-					'button_rules' 		=> array('draftState', 'hasAccessOnPublished', 'generate'),
-				),
-			));
-		}
-
-		// LIVE MODE SETTINGS
-		else
-		{
-			// filter draft elements 
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('draftState=?', '0');
-			
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]');			
-			
-			// close table if user has no access to insert new content element
-			if(!$this->hasAccessOnPublished() && $this->intId != '' && $this->isPublished())
-			{
-				$GLOBALS['TL_DCA'][$this->strTable]['config']['closed'] = true;
-				$GLOBALS['TL_DCA'][$this->strTable]['config']['notEditable'] = true;
-			}
-			
-		}
-		
-		return true;
-	}
 
 	
 	/**
@@ -691,6 +550,147 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			$this->Database->prepare('UPDATE tl_undo %s WHERE id=?')->set($arrSet)->execute($objUndo->id);
 			$objSave->delete();
 		}
+	}
+
+
+/**
+	 * initialize the data container
+	 * Hook: loadDataContainer
+	 * 
+	 * @param string
+	 * @param bool
+	 */
+	public function onLoadDataContainer($strTable)
+	{
+		$strClass = get_class($this);
+		
+		// register onCut callback if any module use draft modules
+		if($strTable == $this->strTable && !empty($GLOBALS['TL_CONFIG']['draftModules']))
+		{
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['oncut_callback'][] = array($strClass, 'onCut');
+		}
+		
+		if($strTable != $this->strTable || !in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
+		{
+			return false;
+		}		
+		
+		// GENERAL SETTINGS
+		
+		// register callbacks
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['onload_callback'][] 		= array($strClass, 'initialize');
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['onload_callback'][] 		= array($strClass, 'checkPermission');				
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncopy_callback'][] 		= array($strClass, 'onCopy');
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['oncreate_callback'][] 	= array($strClass, 'onCreate');		
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['ondelete_callback'][] 	= array($strClass, 'onDelete');
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['onrestore_callback'][] 	= array($strClass, 'onRestore');
+		$GLOBALS['TL_DCA'][$this->strTable]['config']['onsubmit_callback'][] 	= array($strClass, 'onSubmit');			
+		$GLOBALS['TL_DCA'][$this->strTable]['fields']['invisible']['save_callback'][] = array($strClass, 'onToggleVisibility');
+		
+		// register global operations
+		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['live'] = array
+		(
+			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['livemode'],
+			'href' 				=> 'draft=0',
+			'class'				=> 'header_live',
+			'button_callback' 	=> array($strClass, 'generateGlobalButtonLive'),
+			'button_rules' 		=> array('switchMode', 'generate'),
+		);
+			
+		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['draft'] = array
+		(
+			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftmode'],
+			'href' 				=> 'draft=1',
+			'class'				=> 'header_draft',
+			'button_callback' 	=> array($strClass, 'generateGlobalButtonDraft'),
+			'button_rules' 		=> array('switchMode:draft', 'generate'),
+		);
+		
+		$strAttributes = sprintf('onclick="Backend.openModalIframe({\'width\':770,\'title\':\'%s\',\'url\':this.href});'
+								.'draftAddSubmitButton(\'%s\');return false"', 
+								$GLOBALS['TL_LANG'][$this->strTable]['task'][0],
+								$GLOBALS['TL_LANG'][$this->strTable]['task'][2]
+		);
+			
+		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['task'] = array
+		(
+			'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['task'],
+			'href' 				=> 'system/modules/drafts/task.php?do=' . Input::get('do') . '&amp;table=' . $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] . '&amp;id=' . $this->intId . '&amp;rt=' . REQUEST_TOKEN,
+			'class'				=> 'header_task',
+			'attributes'		=> $strAttributes,
+			'button_callback' 	=> array($strClass, 'generateGlobalButtonTask'),
+			'button_rules' 		=> array('hasAccess:module=tasks', 'taskButton', 'generate:plain'),
+		);
+		
+		// DRAFT MODE SETTINGS		
+		if($this->blnDraftMode)
+		{
+			// filter draft elements 
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState>? OR (draftState = 0 AND draftRelated IS NULL))', '0');
+			
+			// data container
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['dataContainer'] = 'DraftableTable';
+				
+			// callbacks
+			$GLOBALS['TL_DCA'][$this->strTable]['edit']['buttons_callback'][] = array($strClass, 'generateSubmitButtons');
+
+			// set relation to eagerly
+			$GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated']['relation']['load'] = 'eager';
+		
+			// permission rules
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('generic:key=[,reset,apply]', 'hasAccessOnPublished:key=apply');
+			
+			// insert draft operation buttons
+			array_insert($GLOBALS['TL_DCA'][$this->strTable]['list']['operations'], 1, array
+			( 
+				'draftDiff' => array
+				(
+					'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftDiff'],
+					'href' 				=> 'system/modules/drafts/diff.php',
+					'icon'				=> 'diff.gif',
+					'attributes'		=> 'onclick="Backend.openModalIframe({\'width\':860,\'title\':\'Unterschiede anzeigen\',\'url\':this.href});return false"',
+					'button_callback' 	=> array($strClass, 'generateButtonDraftDiff'),
+					'button_rules' 		=> array('draftState:modified', 'generate:plain:table:id'),
+				),
+				
+				'draftReset' => array
+				(
+					'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftReset'],
+					'href' 				=> 'act=draft&amp;key=reset',
+					'icon'				=> 'system/modules/drafts/assets/reset.png',
+					'button_callback' 	=> array($strClass, 'generateButtonDraftReset'),
+					'button_rules' 		=> array('draftState', 'generate'),
+				),
+				
+				'draftApply' => array
+				(
+					'label' 			=> &$GLOBALS['TL_LANG'][$this->strTable]['draftApply'],
+					'href' 				=> 'act=draft&amp;key=apply',
+					'icon'				=> 'system/modules/drafts/assets/publish.png',
+					'button_callback' 	=> array($strClass, 'generateButtonDraftApply'),
+					'button_rules' 		=> array('draftState', 'hasAccessOnPublished', 'generate'),
+				),
+			));
+		}
+
+		// LIVE MODE SETTINGS
+		else
+		{
+			// filter draft elements 
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('draftState=?', '0');
+			
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]');			
+			
+			// close table if user has no access to insert new content element
+			if(!$this->hasAccessOnPublished() && $this->intId != '' && $this->isPublished())
+			{
+				$GLOBALS['TL_DCA'][$this->strTable]['config']['closed'] = true;
+				$GLOBALS['TL_DCA'][$this->strTable]['config']['notEditable'] = true;
+			}
+			
+		}
+		
+		return true;
 	}
 	
 	
