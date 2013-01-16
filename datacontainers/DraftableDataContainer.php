@@ -612,7 +612,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		if(Input::get('table') == $this->strTable && Input::get('draft') == '' && $this->isPublished() && !$this->hasAccessOnPublished())
 		{
 			$this->blnDraftMode = true;
-			Input::setGet('draft', 1);
+			Input::setGet('draft', '1');
 		}
 		
 		// GENERAL SETTINGS
