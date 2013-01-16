@@ -38,6 +38,9 @@ class Content extends DraftableDataContainer
 	 */
 	public function generateChildRecord($arrRow)
 	{
+		$objModel = new DraftableModel($this->strTable);
+		$objModel->setRow($arrRow);
+		
 		$key = $arrRow['invisible'] ? 'unpublished' : 'published'; 
 		$type = $GLOBALS['TL_LANG']['CTE'][$arrRow['type']][0] ?: '&nbsp;';
 		$class = 'limit_height';
@@ -72,55 +75,56 @@ class Content extends DraftableDataContainer
 		}
 		
 		// Generate labels
-		$arrState = array();
-		$objModel = new DraftableModel($this->strTable);
-		$objModel->setRow($arrRow);
-		if ($objModel->hasState('new'))
+		if($objModel->isDraft())
 		{
-			$arrState[] = 'new';
-		}
-		else
-		{
-			if($objModel->hasState('modified'))
+			$arrState = array();
+			
+			if ($objModel->hasState('new'))
 			{
-				$arrState[] = 'modified';
+				$arrState[] = 'new';
+			}
+			else
+			{
+				if($objModel->hasState('modified'))
+				{
+					$arrState[] = 'modified';
+				}
+				
+				if($objModel->hasState('sorted'))
+				{
+					$arrState[] = 'sorted';
+				}
+				
+				if($objModel->hasState('delete'))
+				{
+					$arrState[] = 'delete';
+				}
+				
+				if($objModel->hasState('visibility'))
+				{
+					$arrState[] = 'visibility';
+				}
 			}
 			
-			if($objModel->hasState('sorted'))
+			// pass draft labels as javascript
+			if(!empty($arrState))
 			{
-				$arrState[] = 'sorted';
-			}
-			
-			if($objModel->hasState('delete'))
-			{
-				$arrState[] = 'delete';
-			}
-			
-			if($objModel->hasState('visibility'))
-			{
-				$arrState[] = 'visibility';
+				
+				asort($arrState);
+				foreach ($arrState as $strState) 
+				{
+					$label .= sprintf('<div class="draft_label %s">%s</div>', $strState, $GLOBALS['TL_LANG'][$this->strTable]['draftState_' . $strState]);			
+				}
 			}
 		}
 		
 		static $blnLabelsRendered = false;
-		$strLabels = '';
-		
+			
 		if(!$blnLabelsRendered)
 		{
 			$strLabels = '<script>var DraftLabels = { sorted: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_sorted'] . '\''
 						.', visibility: \'' . $GLOBALS['TL_LANG']['tl_content']['draftState_visibility'] .  '\'};</script>';
 			$blnLabelsRendered = true;
-		}
-		
-		// pass draft labels as javascript
-		if(!empty($arrState))
-		{
-			
-			asort($arrState);
-			foreach ($arrState as $strState) 
-			{
-				$label .= sprintf('<div class="draft_label %s">%s</div>', $strState, $GLOBALS['TL_LANG'][$this->strTable]['draftState_' . $strState]);			
-			}
 		}
 		
 		return $strLabels . sprintf
@@ -132,15 +136,47 @@ class Content extends DraftableDataContainer
 
 
 	/**
+	 * filter alias elements so that only life elements are used
+	 * 
+	 * @return array
+	 */
+	public function getAlias()
+	{
+		$objContent = new \tl_content();
+		$arrAlias = $objContent->getAlias();
+		
+		$strPtable = $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] == 'tl_article' ? '(ptable=? OR ptable=\'\')' : 'ptable=?';
+		$objResult = $this->Database->prepare('SELECT id FROM ' . $this->strTable . ' WHERE ' . $strPtable . ' AND draftState>0')
+									->execute($GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
+		
+		$arrIds = $objResult->fetchEach('id');
+		
+		foreach ($arrAlias as $key => $value)
+		{
+			foreach ($arrIds as $intId)
+			{
+				if(isset($arrAlias[$key][$intId]))
+				{
+					unset($arrAlias[$key][$intId]);
+					unset($arrIds[$intId]);
+				}
+			}
+		}
+		
+		return $arrAlias;
+	}
+
+
+	/**
 	 * initialize the data container
 	 * Hook: loadDataContainer
 	 * 
 	 * @param string
 	 * @param bool
 	 */
-	public function initializeDataContainer($strTable)
+	public function onLoadDataContainer($strTable)
 	{
-		if(!parent::initializeDataContainer($strTable))
+		if(!parent::onLoadDataContainer($strTable))
 		{
 			return false;
 		}
@@ -150,18 +186,17 @@ class Content extends DraftableDataContainer
 		if($this->blnDraftMode)
 		{
 			// generate callback
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['child_record_callback'] = array($strClass, 'generateChildRecord');
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['child_record_callback'] 		= array($strClass, 'generateChildRecord');
 			
 			// add draft visibility label toggling
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['attributes']		= 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return draftToggleLabel(this, \'visibility\', DraftLabels.visibility)"';
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['attributes'] 		= 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return draftToggleLabel(this, \'visibility\', DraftLabels.visibility)"';
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_callback'] 	= array($strClass, 'generateButtonToggle');
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_rules']		= array('toggleIcon:field=invisible:inverted', 'generate');
 		}
 	
 		// check permission for operations in live mode
 		else
 		{
-			// permission rules
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('draftPermission');
-			
 			// global operations
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['all']['button_callback'] = array($strClass, 'generateGlobalButtonAll');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['all']['button_rules']	= array('hasAccessOnPublished', 'generate:table:id');
@@ -180,70 +215,6 @@ class Content extends DraftableDataContainer
 		}
 		
 		return true;
-	}
-
-
-	/**
-	 * make sure that new preview elements are also displayed 
-	 * HOOK: getContentElement
-	 * 
-	 * @see ReleaseManagementSystem rms
-	 * @param Database\Result
-	 * @param string
-	 * @return string
-	 */
-	public function previewContentElement($objRow, $strBuffer, $objElement)
-	{
-		// only render on preview
-		if(\Input::cookie('DRAFT_MODE') != '1' || $objRow->ptable == 'tl_drafts')
-		{
-			if($objRow->ptable == 'tl_drafts')
-			{
-				unset(static::$arrContentElements[$objRow->pid][$objRow->id]);
-			}
-			return $strBuffer;
-		}
-		
-		$objDraft = \DraftsModel::findOneByPidAndTable($objRow->pid, $objRow->ptable);
-		
-		if($objDraft === null)
-		{
-			return $strBuffer;
-		}
-		
-		$pid = $objDraft->id;
-		
-		// get all ids of draft elements to get new elements and the new order
-		if(!isset(static::$arrContentElements[$pid]))
-		{
-			static::$arrContentElements[$pid] = array();
-						
-			$objResult = $this->Database->prepare('SELECT id FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? ORDER BY sorting')
-										->execute($objDraft->id, 'tl_drafts');
-			
-			static::$arrContentElements[$pid] = $objResult->fetchEach('id');
-		}
-			
-		$blnBreak = false;
-		$strGenerated = '';
-		
-		// generate all content elements until current is found, required to display new elements
-		foreach(static::$arrContentElements[$pid] as $intKey => $intId)
-		{
-			unset(static::$arrContentElements[$pid][$intKey]);
-			
-			if($intId == $objRow->draftRelated)
-			{
-				$strGenerated .= $strBuffer;	
-				break;
-			}
-			else
-			{
-				$strGenerated .= $this->getContentElement($intId);
-			}
-		}
-		
-		return $strGenerated;
 	}
 
 

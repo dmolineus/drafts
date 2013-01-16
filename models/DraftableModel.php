@@ -76,7 +76,7 @@ class DraftableModel extends VersioningModel
 		$strValue = parent::__get($strKey);
 		
 		// and again dynamic ptable backwards compatibility
-		if($strKey == 'ptable' && $strValue == '' && $this->objModel->getTable() == 'tl_content')
+		if($strKey == 'ptable' && $strValue == '' && $this->getTable() == 'tl_content')
 		{
 			return 'tl_article';
 		}
@@ -92,15 +92,18 @@ class DraftableModel extends VersioningModel
 	 */
 	public function delete()
 	{
-		if($this->hasRelated())
+		$intAffectedRows = parent::delete();
+		
+		if($intAffectedRows > 0 && $this->hasRelated())
 		{
+			// do not use getRelated because it could be cached, @see #5248
 			$objRelated = new static($this->getTable());
 			$objRelated->id = $this->draftRelated;
-			$objRelated->draftRelated = null;
+			$objRelated->draftRelated = 0;			
 			$objRelated->save();
 		}
 		
-		return parent::delete();
+		return $intAffectedRows;
 	}
 	
 	
@@ -117,7 +120,7 @@ class DraftableModel extends VersioningModel
 			$strKey = 'draftRelated';
 		}
 		
-		if($strKey == 'draftRelated' && $this->$strKey === null)
+		if($strKey == 'draftRelated' && $this->$strKey == 0)
 		{
 			return null;
 		}
@@ -127,11 +130,11 @@ class DraftableModel extends VersioningModel
 	
 	
 	/**
-	 * check if element as a relation
+	 * check if element has a relation
 	 */
 	public function hasRelated()
 	{
-		return $this->draftRelated !== null;
+		return $this->draftRelated > 0;
 	}
 	
 	
@@ -145,15 +148,15 @@ class DraftableModel extends VersioningModel
 		switch($strState)
 		{
 			case 'new':
-				return $this->objModel->draftRelated === null;
+				return ($this->objModel->draftRelated == '' || $this->objModel->draftRelated == 0);
 				break;
 			
 			case 'sorted':
-				return !$this->hasState('new') && ($this->objModel->getRelated('draftRelated')->sorting != $this->objModel->sorting);
+				return !$this->hasState('new') && ($this->getRelated()->sorting != $this->objModel->sorting);
 				break;
 			
 			case 'visibility':
-				return !$this->hasState('new') && ($this->objModel->getRelated('draftRelated')->invisible != $this->objModel->invisible);
+				return !$this->hasState('new') && ($this->getRelated()->invisible != $this->objModel->invisible);
 				break;
 				
 			default:
@@ -166,7 +169,7 @@ class DraftableModel extends VersioningModel
 			return false;
 		}
 		
-		return $this->objModel->draftState & $intFlag;
+		return (($this->objModel->draftState & $intFlag) == $intFlag);
 	}
 	
 	
@@ -175,14 +178,14 @@ class DraftableModel extends VersioningModel
 	 */
 	public function isDraft()
 	{
-		return $this->ptable == 'tl_drafts';
+		return $this->hasState('draft');
 	}
 	
 	
 	/**
 	 * create a new model by cloning a reference and replace
 	 * 
-	 * @param bool switch id and draftRelated
+	 * @param bool switch between related and original
 	 * @param bool true if forcing a new model 
 	 * @param bool true is versioning shall be used
 	 */
@@ -190,10 +193,9 @@ class DraftableModel extends VersioningModel
 	{
 		$objNew = clone $this;
 		$objNew->setVersioning($blnVersioning);
-		$objNew->draftState = 0;
 		$objNew->tstamp = time();
 		
-		// id and draft related
+		// switch ids and draft state
 		if($blnSwitch)
 		{
 			$objNew->id = $blnNew ? null : $this->draftRelated;
@@ -201,15 +203,11 @@ class DraftableModel extends VersioningModel
 			
 			if($this->isDraft())
 			{
-				$objDraft = DraftsModel::findByPK($this->pid);
-				$objNew->pid = $objDraft->pid;
-				$objNew->ptable = $objDraft->ptable;
+				$objNew->draftState = 0;
 			}
 			else
 			{
-				$objDraft = DraftsModel::findOneByPidAndTable($this->pid, $this->ptable);
-				$objNew->pid = $objDraft->id;
-				$objNew->ptable = 'tl_drafts';
+				$objNew->setState('draft');
 			}
 		}
 
@@ -252,12 +250,16 @@ class DraftableModel extends VersioningModel
 	{
 		switch ($strState) 
 		{
-			case 'modified':
+			case 'draft':
 				$intFlag = 1;
+				break;
+				
+			case 'modified':
+				$intFlag = 2;
 				break;
 			
 			case 'delete':
-				$intFlag = 2;
+				$intFlag = 4;
 				break;
 				
 			default:

@@ -47,8 +47,8 @@ class TaskController extends Backend
 		$this->import('Database');
 			
 		$this->loadLanguageFile('default');
-		$this->loadLanguageFile('tl_drafts');
 		$this->loadLanguageFile('modules');
+		$this->loadLanguageFile('tl_task');
 	}
 
 
@@ -57,33 +57,31 @@ class TaskController extends Backend
 	 */
 	public function run()
 	{
-		// clean task references
-		$this->Database->query('UPDATE tl_drafts d SET taskid="" WHERE taskid>0 AND NOT EXISTS (SELECT id FROM tl_task WHERE id = d.taskid)');
-		
-		$objDraft = DraftsModel::findByPK(Input::get('id'));
-		
-		if($objDraft === null)
+		$strTable = Input::get('table');
+		$strModule = Input::get('do');
+		$intId = Input::get('id');
+		 
+		if(!strlen($strTable) || !strlen($intId) || !strlen($strModule))
 		{
-			$this->log('No Draft with id "' .Input::get('id'). '" found', 'DraftsModule createTask()', TL_ERROR);
+			$this->log('Required attributes not set', 'TaskController run()', TL_ERROR);
 			$this->redirect('contao/main.php?act=error');
 		}
 		
-		if($objDraft->taskid > 0)
-		{
-			$objTask = $this->Database->query('SELECT id FROM tl_task WHERE id=' . $objDraft->taskid);			
-			$blnCreate = ($objTask->numRows < 0);
-		}
+		// load Data Container so that permission is check
+		$this->loadDataContainer($strTable);		
+		$dc = new DC_Table($strTable);
+
+		$objTask = $this->Database->prepare('SELECT id FROM tl_task WHERE draftPid=? AND draftPtable=?')->execute($intId, $strTable);			
 				
-		if($objDraft->taskid == '0' || $objDraft->taskid == '' || $blnCreate)
-		{
+		if($objTask->numRows < 1)
+		{			
+			$objResult = $this->Database->prepare('SELECT * FROM ' . $strTable . ' WHERE id=?')->execute($intId);
 			
-			$objResult = $this->Database->query('SELECT * FROM ' . $objDraft->ptable . ' WHERE id=' . $objDraft->pid);
-			
-			$strField = $objResult->title === null ? ($objResult->headline === null ? '' : $objResult->headline) : $objResult->title;
-			$strTitle = sprintf($GLOBALS['TL_LANG']['tl_drafts']['draftTaskTitle'],
-				$GLOBALS['TL_LANG']['MOD'][$objDraft->module][0],
-				$objDraft->pid,
-				$objResult->$strField != '' ? $objResult->$strField : $GLOBALS['TL_LANG']['tl_drafts']['draftTaskNoTitle']
+			$strTitle = $objResult->title === null ? ($objResult->headline === null ? '' : $objResult->headline) : $objResult->title;
+			$strTitle = sprintf($GLOBALS['TL_LANG']['tl_task']['draftTaskTitle'],
+				$GLOBALS['TL_LANG']['MOD'][$strModule][0],
+				$intId,
+				$strTitle != '' ? $strTitle : $GLOBALS['TL_LANG']['tl_task']['draftTaskNoTitle']
 			); 
 			
 			// Insert task
@@ -92,18 +90,25 @@ class TaskController extends Backend
 				'tstamp' => time(),
 				'createdBy' => $this->User->id,
 				'title' => $strTitle,
-				'draftsid' => $objDraft->id,
+				'draftPid' => $intId,
+				'draftPtable' => $strTable,
+				'draftModule' => $strModule,
 				'deadline'	=> time() + $GLOBALS['TL_CONFIG']['draftTaskDefaultDeadline'] * 86400,
 			);
 
 			$objTask = $this->Database->prepare("INSERT INTO tl_task %s")->set($arrSet)->execute();
-			$objDraft->taskid = $objTask->insertId;
-			$objDraft->save();
+			$intTaskId = $objTask->insertId;
+			
+		}
+		else
+		{
+			$intTaskId = $objTask->id;
 		}
 		
 		Input::setGet('do', 'tasks');
 		Input::setGet('act', 'edit');
-		Input::setGet('id', $objDraft->taskid);
+		Input::setGet('table', null);
+		Input::setGet('id', $intTaskId);
 		
 		TemplateLoader::addFiles(array 
 		(

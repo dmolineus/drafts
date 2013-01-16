@@ -16,8 +16,6 @@ $GLOBALS['TL_LANG']['tl_settings']['drafts_legend'] = 'Draft mode';
 
 $GLOBALS['TL_LANG']['tl_settings']['draftModules'][0] = 'Enable Draft mode';
 $GLOBALS['TL_LANG']['tl_settings']['draftModules'][1] = 'Please choose the modules which shall use the draft mode.';
-$GLOBALS['TL_LANG']['tl_settings']['draftModeAsDefault'][0] = 'Automatically switch to draft mode';
-$GLOBALS['TL_LANG']['tl_settings']['draftModeAsDefault'][1] = 'Switch to the draft mode automatically if draft exists';
 $GLOBALS['TL_LANG']['tl_settings']['draftUseTaskModule'][0] = 'Use task module';
 $GLOBALS['TL_LANG']['tl_settings']['draftUseTaskModule'][1] = 'Integrate task module for pushlishing or changing requests';
 $GLOBALS['TL_LANG']['tl_settings']['draftsTaskDefaultDeadline'][0] = 'Deadline in days';
