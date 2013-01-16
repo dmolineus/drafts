@@ -409,44 +409,65 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			}
 		}
 			
-		// live element was moved, move draft to new place as well
+		// element was moved into live, move draft to new place as well
 		elseif(!$this->blnDraftMode && $objModel->pid != $objRelated->pid)
 		{
+			// model was a draft, delete old draft or	
+			// delete it because we do not know if new ptable is also draftable, will not happen until #5234 is fixed 
+			if($objModel->isDraft() || $objRelated->ptable != $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'])
+			{
+				$objModel->draftRelated = 0;
+				$objModel->draftState = 0;
+				$objModel->save();
+				
+				$objRelated->delete();
+			}
+			
 			// it is in the same ptable, so move draft as well
-			if($objRelated->ptable == $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']) 
+			else
 			{
 				$objRelated->pid = $objModel->pid;
 				$objRelated->ptable = $objModel->ptable;
 				$objRelated->setState('draft');
 				$objRelated->sorting = $objModel->sorting;
-				$objRelated->save();
-			}
-			
-			// otherwise delete it because we do not know if it is also draftable
-			else 
-			{
-				$objRelated->delete();					
+				$objRelated->save();			
 			}
 		}
 		
 		// draft was moved to new parent, label original as to delete
 		elseif($this->blnDraftMode && $objModel->pid != $objRelated->pid)
-		{	
-			$objModel->draftRelated = 0;
-			$objModel->save();			
-					
-			$objNew = clone $objModel;
-			$objNew->ptable = $objRelated->ptable;
-			$objNew->draftRelated = $objRelated->id;
-			$objNew->sorting = $objRelated->sorting;	
-			$objNew->setState('delete');
-			$objNew->setState('draft');
-			$objNew->setVersioning(true);
-			$objNew->save(true);
+		{
+			// model was a live element, now it's a draft, delete related draft
+			if(!$objModel->isDraft())
+			{
+				$objModel->setState('draft');
+				$objModel->draftRelated = 0;
+				$objModel->save();
 				
-			$objRelated->draftRelated = $objNew->id;
-			$objRelated->setVersioning(false);
-			$objRelated->save();
+				$objRelated->delete();
+			}
+			
+			// model was a draft, create new related for objRelated and label as delete
+			else
+			{
+				$objModel->draftRelated = 0;
+				$objModel->save();			
+						
+				$objNew = clone $objModel;
+				$objNew->pid = $objRelated->pid;
+				$objNew->ptable = $objRelated->ptable;
+				$objNew->draftRelated = $objRelated->id;
+				$objNew->sorting = $objRelated->sorting;	
+				$objNew->setState('delete');
+				$objNew->setState('draft');
+				$objNew->setVersioning(true);
+				$objNew->save(true);
+					
+				$objRelated->draftRelated = $objNew->id;
+				$objRelated->setVersioning(false);
+				$objRelated->save();
+				
+			}
 		}
 	}
 	
