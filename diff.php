@@ -15,7 +15,7 @@
  * Initialize the system
  */
 define('TL_MODE', 'BE');
-require_once '../../system/initialize.php';
+require_once '../../initialize.php';
 
 
 /**
@@ -71,7 +71,7 @@ class DiffController extends Backend
 			$this->strTable = \Input::get('table');
 			$objDraft = Netzmacht\Drafts\Model\DraftableModel::findByPK($this->strTable, \Input::get('id'));			
 			$objModel = $objDraft->getRelated();
-			
+			//var_dump($objDraft);
 			if ($objDraft === null || $objModel === null)
 			{
 				$strBuffer = 'There are no draft of ' . \Input::get('table') . '.id=' . \Input::get('id');
