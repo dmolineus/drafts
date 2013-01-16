@@ -62,7 +62,8 @@ class ContentModel extends Contao\ContentModel
 		// get all draft elements
 		if($blnPreview)
 		{
-			$arrOptions['column'][] = "(($t.draftState = 0 AND $t.draftRelated IS NULL) OR $t.draftState > 0)";			
+			// draftState 4 are deleted elements, filter them
+			$arrOptions['column'][] = "(($t.draftState = 0 AND $t.draftRelated = '') OR ($t.draftState > 0 AND $t.draftState < 4))";
 		}
 		
 		// limit to live elements by default
