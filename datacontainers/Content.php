@@ -75,7 +75,7 @@ class Content extends DraftableDataContainer
 		}
 		
 		// Generate labels
-		if($arrRow['draftState'] > 0)
+		if($objModel->isDraft())
 		{
 			$arrState = array();
 			
@@ -186,10 +186,10 @@ class Content extends DraftableDataContainer
 		if($this->blnDraftMode)
 		{
 			// generate callback
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['child_record_callback'] = array($strClass, 'generateChildRecord');
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['child_record_callback'] 		= array($strClass, 'generateChildRecord');
 			
 			// add draft visibility label toggling
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['attributes'] = 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return draftToggleLabel(this, \'visibility\', DraftLabels.visibility)"';
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['attributes'] 		= 'onclick="Backend.getScrollOffset();AjaxRequest.toggleVisibility(this,%s);return draftToggleLabel(this, \'visibility\', DraftLabels.visibility)"';
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_callback'] 	= array($strClass, 'generateButtonToggle');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_rules']		= array('toggleIcon:field=invisible:inverted', 'generate');
 		}

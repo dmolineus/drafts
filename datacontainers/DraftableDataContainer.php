@@ -19,6 +19,7 @@ use Netzmacht\Drafts\Model\DraftableModel, Input, DC_Table, Contao\Database\Mysq
 // initialize draft modules
 $GLOBALS['TL_CONFIG']['draftModules'] = unserialize($GLOBALS['TL_CONFIG']['draftModules']);
 
+
 /**
  * DraftableDataContainer provides draft functionality for tables with dynamic ptable
  * 
@@ -132,7 +133,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		elseif($objModel->hasState('new'))
 		{
 			$objModel->draftState = 0;
-			$objModel->draftRelated = null;
+			$objModel->draftRelated = 0;
 			$objModel->save();
 		}
 		
@@ -142,7 +143,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			if($objModel->hasState('modified'))
 			{
 				$objNew = $objModel->prepareCopy();
-				$objNew->draftRelated = null;
+				$objNew->draftRelated = 0;
 				$objNew->save();
 			}			
 			else
@@ -159,7 +160,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 					$objOriginal->invisible = $objModel->invisible;
 				}
 				
-				$objOriginal->draftRelated = null;
+				$objOriginal->draftRelated = 0;
 				$objOriginal->setVersioning(true);
 				$objOriginal->tstamp = time();
 				$objOriginal->save();
@@ -318,6 +319,19 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	
 	
 	/**
+	 * delete all drafts if parent is copied
+	 * 
+	 * @param int id
+	 * @param DC_Table
+	 */
+	public function onCopyParent($insertID, $objDc)
+	{
+		$this->Database->prepare('DELETE FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? AND draftState >0')
+					   ->execute($insertID, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
+	}
+	
+	
+	/**
 	 * keep draft in sync with 
 	 * 
 	 * @param string table
@@ -373,10 +387,10 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				$objModel->draftState = 0;
 			}
 			
-			$objRelated->draftRelated = null;
+			$objRelated->draftRelated = 0;
 			$objModel->save();
 				
-			$objModel->draftRelated = null;
+			$objModel->draftRelated = 0;
 			$objModel->save();
 		}
 		
@@ -425,8 +439,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// create new draft for formerly related and mark as delete, because it is moved to another place
 		elseif($this->blnDraftMode && $objModel->pid != $objRelated->pid)
 		{	
-			$objRelated->draftRelated = null;
-			$objModel->draftRelated = null;
+			$objRelated->draftRelated = 0;
+			$objModel->draftRelated = 0;
 			$objModel->save();			
 			
 			if($objNewDrafts !== null)
@@ -464,7 +478,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			if($objModel->hasRelated())
 			{
 				$objReleated = $objModel->getRelated();
-				$objReleated->draftRelated = null;
+				$objReleated->draftRelated = 0;
 				$objReleated->save();
 			}
 			
@@ -494,7 +508,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 					
 					if($objRelated !== null)
 					{
-						$objRelated->draftRelated = null;
+						$objRelated->draftRelated = 0;
 						$objRelated->save();
 					}
 					
@@ -514,7 +528,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		}
 		
 		// add draft element to tl_undo as well
-		elseif($objDc->activeRecord->draftRelated != null)
+		elseif($objDc->activeRecord->draftRelated > 0)
 		{
 			// get last undo
 			$objUndo = $this->Database->prepare('SELECT * FROM tl_undo WHERE fromTable=? AND pid=? ORDER BY id DESC')->limit(1)->executeUncached($this->strTable, $this->User->id);
@@ -553,7 +567,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	}
 
 
-/**
+	/**
 	 * initialize the data container
 	 * Hook: loadDataContainer
 	 * 
@@ -564,10 +578,19 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	{
 		$strClass = get_class($this);
 		
-		// register onCut callback if any module use draft modules
-		if($strTable == $this->strTable && !empty($GLOBALS['TL_CONFIG']['draftModules']))
-		{
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['oncut_callback'][] = array($strClass, 'onCut');
+		if(!empty($GLOBALS['TL_CONFIG']['draftModules']))
+		{			
+			// register onCut callback if any module use draft modules
+			if($strTable == $this->strTable)
+			{
+				$GLOBALS['TL_DCA'][$this->strTable]['config']['oncut_callback'][] = array($strClass, 'onCut');
+			}
+
+			// register on copy callback to parent
+			if(is_array($GLOBALS['TL_DCA'][$strTable]['config']['ctable']) && in_array($this->strTable, $GLOBALS['TL_DCA'][$strTable]['config']['ctable']))
+			{
+				$GLOBALS['TL_DCA'][$strTable]['config']['oncopy_callback'][] = array($strClass, 'onCopyParent');
+			}
 		}
 		
 		if($strTable != $this->strTable || !in_array(Input::get('do'), $GLOBALS['TL_CONFIG']['draftModules']))
@@ -594,7 +617,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			'href' 				=> 'draft=0',
 			'class'				=> 'header_live',
 			'button_callback' 	=> array($strClass, 'generateGlobalButtonLive'),
-			'button_rules' 		=> array('switchMode', 'generate'),
+			'button_rules' 		=> array('switchMode', 'generate:table:id'),
 		);
 			
 		$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['draft'] = array
@@ -603,7 +626,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			'href' 				=> 'draft=1',
 			'class'				=> 'header_draft',
 			'button_callback' 	=> array($strClass, 'generateGlobalButtonDraft'),
-			'button_rules' 		=> array('switchMode:draft', 'generate'),
+			'button_rules' 		=> array('switchMode:draft', 'generate:table:id'),
 		);
 		
 		$strAttributes = sprintf('onclick="Backend.openModalIframe({\'width\':770,\'title\':\'%s\',\'url\':this.href});'
@@ -626,7 +649,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		if($this->blnDraftMode)
 		{
 			// filter draft elements 
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState>? OR (draftState = 0 AND draftRelated IS NULL))', '0');
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState>? OR (draftState = 0 AND draftRelated = 0))', '0');
 			
 			// data container
 			$GLOBALS['TL_DCA'][$this->strTable]['config']['dataContainer'] = 'DraftableTable';
@@ -734,20 +757,15 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		$objModel = new DraftableModel($objDc->activeRecord, false, $this->strTable);
 		
 		// update label
-		if($this->blnDraftMode)
+		if($this->blnDraftMode && !$objModel->hasState('new') && !$objModel->hasState('modified'))
 		{
-			if($objModel->hasState('new') || $objModel->hasState('modified'))
-			{
-				return;
-			}
-			
 			$objModel->setState('modified');
 			$objModel->tstamp = time();
 			$objModel->save();
 		}
 		
 		// udate draft to newest live version
-		elseif($objDc->activeRecord->draftRelated != null)
+		elseif(!$this->blnDraftMode && $objDc->activeRecord->draftRelated > 0)
 		{
 			$objNew = $objModel->prepareCopy();
 			$objNew->save();
@@ -881,15 +899,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	protected function buttonRuleSwitchMode(&$strButton, &$strHref, &$strLabel, &$strTitle, &$strIcon, &$strAttributes, &$arrAttributes, $arrRow=null)
 	{
-		$blnMode = isset($arrAttributes['draft']) ? (Input::get('draft') == '1') : (Input::get('draft') != '1');
-
-		if(!$this->isPublished() || $blnMode)
-		{
-			return false;
-		}
-
-		$strHref .= '&amp;table=' . $this->strTable . '&amp;id=' . $this->intId;
-		return true;
+		return $this->isPublished() && (isset($arrAttributes['draft']) ? (Input::get('draft') != '1') : (Input::get('draft') == '1'));
 	}
 	
 
@@ -953,7 +963,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			return $this->blnIsPublished;
 		}
 
-		return $this->Database->query($strQuery)->published;;
+		return $this->Database->query($strQuery)->published;
 	}
 
 

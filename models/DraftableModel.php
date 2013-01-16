@@ -99,7 +99,7 @@ class DraftableModel extends VersioningModel
 			// do not use getRelated because it could be cached, @see #5248
 			$objRelated = new static($this->getTable());
 			$objRelated->id = $this->draftRelated;
-			$objRelated->draftRelated = null;			
+			$objRelated->draftRelated = 0;			
 			$objRelated->save();
 		}
 		
@@ -120,7 +120,7 @@ class DraftableModel extends VersioningModel
 			$strKey = 'draftRelated';
 		}
 		
-		if($strKey == 'draftRelated' && $this->$strKey === null)
+		if($strKey == 'draftRelated' && $this->$strKey == 0)
 		{
 			return null;
 		}
@@ -148,15 +148,15 @@ class DraftableModel extends VersioningModel
 		switch($strState)
 		{
 			case 'new':
-				return $this->objModel->draftRelated === null;
+				return $this->objModel->draftRelated === 0;
 				break;
 			
 			case 'sorted':
-				return !$this->hasState('new') && ($this->objModel->getRelated('draftRelated')->sorting != $this->objModel->sorting);
+				return !$this->hasState('new') && ($this->getRelated()->sorting != $this->objModel->sorting);
 				break;
 			
 			case 'visibility':
-				return !$this->hasState('new') && ($this->objModel->getRelated('draftRelated')->invisible != $this->objModel->invisible);
+				return !$this->hasState('new') && ($this->getRelated()->invisible != $this->objModel->invisible);
 				break;
 				
 			default:
