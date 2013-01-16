@@ -821,10 +821,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		{
 			return false;
 		}
-		
-		if(!$objModel->isDraft())
+		elseif(!$objModel->isDraft())
 		{
-			$or = $objModel;
 			$objModel = $objModel->getRelated();		
 		}
 		
