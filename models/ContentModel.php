@@ -47,11 +47,13 @@ class ContentModel extends Contao\ContentModel
 			
 			// load dca extrator so data container is loaded, can not use loadDataContainer in static context
 			$objDca = new \DcaExtractor($t);
-			$strKey = $arrOptions['column'];
-			$arrKeys = $GLOBALS['TL_DCA'][$t]['config']['sql']['keys'];
 
+			$strKey = $arrOptions['column'];
+			$arrKeys = $objDca->getKeys();			
+			$arrFields = $objDca->getFields();
+			
 			// do not add draftState if column is unique			
-			if((isset($arrKeys[$strKey]) && ($arrKeys[$strKey] == 'unique' || $arrKeys[$strKey] == 'primary')) || $GLOBALS['TL_DCA'][$t]['fields'][$strKey]['eval']['unique'])
+			if((isset($arrKeys[$strKey]) && ($arrKeys[$strKey] == 'unique' || $arrKeys[$strKey] == 'primary')) || $arrFields[$strKey]['eval']['unique'])
 			{
 				return parent::find($arrOptions);				
 			}
