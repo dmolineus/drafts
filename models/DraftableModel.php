@@ -148,7 +148,7 @@ class DraftableModel extends VersioningModel
 		switch($strState)
 		{
 			case 'new':
-				return $this->objModel->draftRelated === 0;
+				return ($this->objModel->draftRelated == '' || $this->objModel->draftRelated == 0);
 				break;
 			
 			case 'sorted':
