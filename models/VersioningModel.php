@@ -207,7 +207,7 @@ class VersioningModel extends Controller
 	 */
 	public function save($blnForceInsert=false, $blnIgnoreVersioning=false)
 	{
-		$strTable = $this->objModel->getTable();
+		$strTable = $this->getTable();
 		$strPk = $this->objModel->getPk();
 		$blnVersioning = $this->blnVersioning && !$blnIgnoreVersioning && $GLOBALS['TL_DCA'][$strTable]['config']['enableVersioning'];
 

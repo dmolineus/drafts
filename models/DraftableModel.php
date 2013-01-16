@@ -76,7 +76,7 @@ class DraftableModel extends VersioningModel
 		$strValue = parent::__get($strKey);
 		
 		// and again dynamic ptable backwards compatibility
-		if($strKey == 'ptable' && $strValue == '' && $this->objModel->getTable() == 'tl_content')
+		if($strKey == 'ptable' && $strValue == '' && $this->getTable() == 'tl_content')
 		{
 			return 'tl_article';
 		}
@@ -97,7 +97,7 @@ class DraftableModel extends VersioningModel
 		if($intAffectedRows > 0 && $this->hasRelated())
 		{
 			// do not use getRelated because it could be cached, @see #5248
-			$objRelated = new static($this->objModel->getTable());
+			$objRelated = new static($this->getTable());
 			$objRelated->id = $this->draftRelated;
 			$objRelated->draftRelated = null;			
 			$objRelated->save();
