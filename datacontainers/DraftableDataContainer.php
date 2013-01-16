@@ -326,7 +326,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function onCopyParent($insertID, $objDc)
 	{
-		$this->Database->prepare('DELETE FROM ' . $this->strTable . ' WHERE pid=? AND ptable=? AND draftState >0')
+		$strPtable = $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] == 'tl_article' ? '(ptable=? OR ptable=\'\')' : 'ptable=?';
+		$this->Database->prepare('DELETE FROM ' . $this->strTable . ' WHERE pid=? AND ' . $strPtable . ' AND draftState >0')
 					   ->execute($insertID, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
 	}
 	
