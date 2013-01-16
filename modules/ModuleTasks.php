@@ -34,32 +34,59 @@ class ModuleTasks extends Contao\ModuleTasks
 	 */
 	protected function checkPermission($objTask, $blnRedirect=false, $strErrorAction='access')
 	{
-		if($GLOBALS['TL_CONFIG']['draftUseTaskModule'] && $objTask->draftsid > 0)
-		{
-			$objDraft = DraftsModel::findByPK($objTask->draftsid);
-			
-			if($objDraft === null)
-			{
-				$this->Database->query('UPDATE tl_task SET draftsid=0 WHERE id=' . $objTask->id);
-				return true;
-			}
-			
-			$intPerm = $this->Session->get('draftPermission');
-			
-			if($intPerm == $objDraft->id)
-			{
-				return true;
-			}
-			elseif($blnRedirect && \Input::get('redirect') != '2')
-			{
-				$this->redirect(sprintf('contao/main.php?do=%s&table=%s&id=%s&redirect=task&taskid=%s&rt=%s', $objDraft->module, $objDraft->ctable, $objDraft->pid, $objTask->id, REQUEST_TOKEN));
-			}
-			
-			
-		}
-		elseif($this->User->isAdmin || $this->User->id == $objTask->createdBy)
+		// default task permission checking
+		if($this->User->isAdmin || $this->User->id == $objTask->createdBy)
 		{
 			return true;
+		}
+		
+		$this->import('BackendUser', 'User');
+		
+		// permission checking for root elements
+		// BTW: Why does Contao not provide a useable interface for such permission checking???
+		if($GLOBALS['TL_CONFIG']['draftUseTaskModule'] && $objTask->draftPid > 0 && $this->User->hasAccess($objTask->draftModule, 'modules'))
+		{
+			// check articles
+			if($objTask->draftPtable == 'tl_article')
+			{
+				$pagemounts = array();
+
+				foreach ($this->User->pagemounts as $root)
+				{
+					$pagemounts[] = $root;
+					$pagemounts = array_merge($pagemounts, $this->Database->getChildRecords($root, 'tl_page'));
+				}
+		
+				$pagemounts = array_unique($pagemounts);					
+				$objPage = $this->Database->prepare('SELECT pid FROM tl_article WHERE id=?')->execute($objTask->draftPid);
+				
+				if(in_array($objPage->pid, $pagemounts))
+				{
+					return true;
+				}
+			}
+			
+			// check news
+			elseif($objTask->draftPtable == 'tl_news')
+			{
+				$root = (!is_array($this->User->news) || empty($this->User->news)) ? array(0) : $this->User->news;
+				
+				if(in_array($objTask->pid, $root))
+				{
+					return true;
+				}
+			}
+			
+			// check calendar
+			elseif($objTask->draftPtable == 'tl_calendar_events')
+			{
+				$root = (!is_array($this->User->calendars) || empty($this->User->calendars)) ? array(0) : $this->User->calendars;
+				
+				if(in_array($objTask->pid, $root))
+				{
+					return true;
+				}
+			}
 		}
 		
 		if($blnRedirect)
