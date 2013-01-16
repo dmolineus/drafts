@@ -341,7 +341,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				$this->loadDataContainer($strTable);
 				
 				// make sure that current data container is on of the parents
-				if(in_array($this->strTable, $GLOBALS['TL_DCA'][$strTable]['config']['ctable']))
+				if(!empty($GLOBALS['TL_DCA'][$strTable]['config']['ctable']) && in_array($this->strTable, $GLOBALS['TL_DCA'][$strTable]['config']['ctable']))
 				{
 					// check if ptable is set
 					if($GLOBALS['TL_DCA'][$strTable]['config']['dynamicPtable'])
@@ -363,8 +363,8 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		if($intId !== null)
 		{
 			$strPtable = $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] == 'tl_article' ? '(ptable=? OR ptable=\'\')' : 'ptable=?';
-			$obj = $this->Database	->prepare('DELETE FROM ' . $this->strTable . ' WHERE pid=? AND ' . $strPtable . ' AND draftState >0')
-							->execute($intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
+			$obj = $this->Database->prepare('DELETE FROM ' . $this->strTable . ' WHERE pid=? AND ' . $strPtable . ' AND draftState >0')
+						->execute($intId, $GLOBALS['TL_DCA'][$this->strTable]['config']['ptable']);
 		}
 	}
 	
@@ -711,20 +711,16 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// DRAFT MODE SETTINGS		
 		if($this->blnDraftMode)
 		{
-			// filter draft elements 
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState>? OR (draftState = 0 AND draftRelated = 0))', '0');
-			
-			// data container
+			// change data container and add permission rules
 			$GLOBALS['TL_DCA'][$this->strTable]['config']['dataContainer'] = 'DraftableTable';
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('generic:key=[,reset,apply]', 'hasAccessOnPublished:key=apply');
 			
-			// callbacks
+			// add list filter for getting draft elements and add custom submit buttons 
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState>? OR (draftState = 0 AND draftRelated = 0))', '0');
 			$GLOBALS['TL_DCA'][$this->strTable]['edit']['buttons_callback'][] = array($strClass, 'generateSubmitButtons');
 
-			// set relation to eagerly
-			$GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated']['relation']['load'] = 'eager';
-		
-			// permission rules
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('generic:key=[,reset,apply]', 'hasAccessOnPublished:key=apply');
+			// set relation to eagerly in draft mode
+			$GLOBALS['TL_DCA'][$this->strTable]['fields']['draftRelated']['relation']['load'] = 'eager';
 			
 			// insert draft operation buttons
 			array_insert($GLOBALS['TL_DCA'][$this->strTable]['list']['operations'], 1, array
@@ -762,10 +758,9 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		// LIVE MODE SETTINGS
 		else
 		{
-			// filter draft elements 
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('draftState=?', '0');
-			
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('hasAccessOnPublished:act=[edit,delete,cut,copy,select,deleteAll,editAll,overrideAll,cutAll,copyAll]');			
+			// filter draft elements and add permission rules
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('draftState=?', '0');			
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('hasAccessOnPublished:act=[*,,show]');			
 			
 			// close table if user has no access to insert new content element
 			if(!$this->hasAccessOnPublished() && $this->intId != '' && $this->isPublished())
@@ -773,7 +768,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['closed'] = true;
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['notEditable'] = true;
 			}
-			
 		}
 		
 		return true;
@@ -826,7 +820,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			$objModel->tstamp = time();
 			$objModel->save();
 		}
-		
 		// udate draft to newest live version
 		elseif(!$this->blnDraftMode && $objDc->activeRecord->draftRelated > 0)
 		{
