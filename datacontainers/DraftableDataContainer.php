@@ -32,7 +32,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 * configure button rules for live view
 	 * @param array
 	 */
-	protected $arrButtonRules = array('__default__' => array('hasAccessOnPublished'));
+	protected $arrButtonRules = array
+	(
+		'__default__' 	=> array('hasAccessOnPublished'),
+		'show'			=> array('generate'),
+	);
 	 
 	/**
 	 * true if we are in draft mode
@@ -784,11 +788,6 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			// log button rules for each 
 			foreach($GLOBALS['TL_DCA'][$this->strTable]['list']['operations'] as $strKey => $arrConfig)
 			{
-				if($strKey == 'show')
-				{
-					continue;
-				}
-				
 				// register callback
 				$GLOBALS['TL_DCA'][$this->strTable]['list']['operations'][$strKey]['button_callback'] = array($strClass, 'generateButton' . ucfirst($strKey));
 				
