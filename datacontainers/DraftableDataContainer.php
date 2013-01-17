@@ -293,12 +293,12 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 	 */
 	public function onCopy($insertID, $objDc)
 	{
+		$objModel = DraftableModel::findByPK($this->strTable, $insertID);
+		
 		// label copied element as new
 		if(!$this->blnDraftMode)
 		{
-			$objModel = DraftableModel::findByPK($this->strTable, $insertID);
-
-			if($objModel->hasRelated)
+			if($objModel->hasRelated())
 			{
 				$objNew = $objModel->prepareCopy(true, true);
 				$objNew->save();
@@ -306,6 +306,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 				$objModel->draftRelated = $objNew->id;
 				$objModel->save();
 			}
+		}
+		else
+		{
+			$objModel->draftRelated = 0;
+			$objModel->save();
 		}
 	}
 	
@@ -716,7 +721,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('generic:key=[,reset,apply]', 'hasAccessOnPublished:key=apply');
 			
 			// add list filter for getting draft elements and add custom submit buttons 
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState>? OR (draftState = 0 AND draftRelated = 0))', '0');
+			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('(draftState>? OR (draftState=0 AND draftRelated=0))', 0);
 			$GLOBALS['TL_DCA'][$this->strTable]['edit']['buttons_callback'][] = array($strClass, 'generateSubmitButtons');
 
 			// set relation to eagerly in draft mode
@@ -760,7 +765,7 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 		{
 			// filter draft elements and add permission rules
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['filter'][] = array('draftState=?', '0');			
-			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('hasAccessOnPublished:act=[*,,show]');			
+			$GLOBALS['TL_DCA'][$this->strTable]['config']['permission_rules'] = array('hasAccessOnPublished:act=[*,show,]');			
 			
 			// close table if user has no access to insert new content element
 			if(!$this->hasAccessOnPublished() && $this->intId != '' && $this->isPublished())
