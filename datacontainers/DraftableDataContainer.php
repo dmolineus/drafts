@@ -27,7 +27,6 @@ $GLOBALS['TL_CONFIG']['draftModules'] = unserialize($GLOBALS['TL_CONFIG']['draft
 abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 {
 	
-	  
 	/**
 	 * configure button rules for live view
 	 * @param array
