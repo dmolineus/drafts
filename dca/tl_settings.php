@@ -12,7 +12,7 @@
  *  
  **/
 
-$GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] .= ';{drafts_legend},draftModules,draftModeAsDefault,draftUseTaskModule,draftTaskDefaultDeadline';
+$GLOBALS['TL_DCA']['tl_settings']['palettes']['default'] .= ';{drafts_legend},draftModules,draftUseTaskModule,draftTaskDefaultDeadline';
 
 $GLOBALS['TL_DCA']['tl_settings']['fields']['draftModules'] = array
 (
