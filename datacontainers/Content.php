@@ -29,6 +29,19 @@ class Content extends DraftableDataContainer
 	
 	
 	/**
+	 * 
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+		
+		// register specific button rules
+		$this->arrButtonRules['delete'] = array('hasAccessOnPublished', 'disableIcon:rule=aliasElement', 'generate');
+		$this->arrButtonRules['toggle'] = array('hasAccessOnPublished:icon=invisible.gif', 'toggleIcon:field=invisible:inverted', 'generate');
+	}
+	
+	
+	/**
 	 * provide a generateChildRecord callback
 	 * Modified tl_content::addCteType
 	 * 
@@ -200,18 +213,6 @@ class Content extends DraftableDataContainer
 			// global operations
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['all']['button_callback'] = array($strClass, 'generateGlobalButtonAll');
 			$GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations']['all']['button_rules']	= array('hasAccessOnPublished', 'generate:table:id');
-		
-			// operation callbacks
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['edit']['button_callback']	= array($strClass, 'generateButtonEdit');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['edit']['button_rules']		= array('hasAccessOnPublished', 'generate');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['copy']['button_callback'] 	= array($strClass, 'generateButtonCopy');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['copy']['button_rules']		= array('hasAccessOnPublished', 'generate');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['delete']['button_callback'] 	= array($strClass, 'generateButtonDelete');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['delete']['button_rules']		= array('hasAccessOnPublished', 'disableIcon:rule=aliasElement', 'generate');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_callback'] 	= array($strClass, 'generateButtonToggle');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['toggle']['button_rules']		= array('hasAccessOnPublished:icon=invisible.gif', 'toggleIcon:field=invisible:inverted', 'generate');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['cut']['button_callback'] 	= array($strClass, 'generateButtonCut');
-			$GLOBALS['TL_DCA'][$this->strTable]['list']['operations']['cut']['button_rules']		= array('hasAccessOnPublished', 'generate');
 		}
 		
 		return true;

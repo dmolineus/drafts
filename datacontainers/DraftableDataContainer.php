@@ -27,6 +27,13 @@ $GLOBALS['TL_CONFIG']['draftModules'] = unserialize($GLOBALS['TL_CONFIG']['draft
 abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 {
 	
+	  
+	/**
+	 * configure button rules for live view
+	 * @param array
+	 */
+	protected $arrButtonRules = array('__default__' => array('hasAccessOnPublished'));
+	 
 	/**
 	 * true if we are in draft mode
 	 * @param bool
@@ -772,6 +779,42 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			{
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['closed'] = true;
 				$GLOBALS['TL_DCA'][$this->strTable]['config']['notEditable'] = true;
+			}
+
+			// log button rules for each 
+			foreach($GLOBALS['TL_DCA'][$this->strTable]['list']['operations'] as $strKey => $arrConfig)
+			{
+				if($strKey == 'show')
+				{
+					continue;
+				}
+				
+				// register callback
+				$GLOBALS['TL_DCA'][$this->strTable]['list']['operations'][$strKey]['button_callback'] = array($strClass, 'generateButton' . ucfirst($strKey));
+				
+				// specific ruleset is registered, use it
+				if(isset($this->arrButtonRules[$strKey]))
+				{
+					$GLOBALS['TL_DCA'][$this->strTable]['list']['operations'][$strKey]['button_rules'] = $this->arrButtonRules[$strKey];
+				}
+				
+				// create default rules
+				else 
+				{
+					// default generate rule
+					$strGenerate = 'generate';
+					
+					// button already has a callback, pass it by to the generate rule
+					if(isset($arrConfig['button_callback']))
+					{
+						$strGenerate .= ':callback=[' . implode(',', $arrConfig['button_callback']) . ']';					
+					}
+
+					$arrRules = $this->arrButtonRules['__default__'];
+					$arrRules[] = $strGenerate;
+					
+					$GLOBALS['TL_DCA'][$this->strTable]['list']['operations'][$strKey]['button_rules'] = $arrRules;
+				}
 			}
 		}
 		
