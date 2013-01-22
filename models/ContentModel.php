@@ -53,7 +53,7 @@ class ContentModel extends Contao\ContentModel
 			$arrFields = $objDca->getFields();
 			
 			// do not add draftState if column is unique			
-			if($strKey == 'draftRelated' || (isset($arrKeys[$strKey]) && ($arrKeys[$strKey] == 'unique' || $arrKeys[$strKey] == 'primary')) || $arrFields[$strKey]['eval']['unique'])
+			if($strKey == 'draftRelated' || (isset($arrKeys[$strKey]) && ($arrKeys[$strKey] == 'unique' || $arrKeys[$strKey] == 'primary')) || isset($arrFields[$strKey]['eval']['unique']))
 			{
 				return parent::find($arrOptions);				
 			}
