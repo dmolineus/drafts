@@ -889,11 +889,11 @@ abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
 			// ajax request => get_class($objDc) == get_class($this)
 			$strField = get_class($objDc) == get_class($this) ? 'draftRelated' : 'id';
 			$objModel = DraftableModel::findOneBy($this->strTable, $strField, $strField == 'id' ? $objDc->activeRecord->draftRelated : $this->intId);
-				
+
 			if($objModel !== null && $blnVisible != $objModel->invisible)
 			{
 				$objModel->setVersioning(true);
-				$objModel->invisible = $blnVisible;
+				$objModel->invisible = $blnVisible ? '1' : '';
 				$objModel->tstamp = time();
 				$objModel->save();
 			}
