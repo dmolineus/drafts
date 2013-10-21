@@ -12,7 +12,7 @@
  *  
  **/
  
-namespace Netzmacht\Drafts\Widget;
+namespace Drafts\Widget;
 use Input;
 
 

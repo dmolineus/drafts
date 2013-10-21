@@ -17,7 +17,7 @@
 $GLOBALS['TL_DCA']['tl_content']['config']['sql']['keys']['draftRelated'] 	= 'index';
 
 // fields
-$GLOBALS['TL_DCA']['tl_content']['fields']['cteAlias']['options_callback'] = array('Netzmacht\Drafts\DataContainer\Content', 'getAlias');
+$GLOBALS['TL_DCA']['tl_content']['fields']['cteAlias']['options_callback'] = array('Drafts\DataContainer\Content', 'getAlias');
 			
 $GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated'] = array
 (

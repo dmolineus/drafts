@@ -11,31 +11,38 @@
  * @copyright Copyright 2012 David Molineus netzmacht creative 
  *  
  **/
- 
+
+ClassLoader::addNamespaces(array
+(
+	'Drafts',
+));
+
+/*
 ClassLoader::addClasses(array
 (
 	// datacontainers
-	'Netzmacht\Drafts\DataContainer\DraftableDataContainer' => 'system/modules/drafts/datacontainers/DraftableDataContainer.php',
-	'Netzmacht\Drafts\DataContainer\Content' 				=> 'system/modules/drafts/datacontainers/Content.php',
-	'Netzmacht\Drafts\DataContainer\Drafts' 				=> 'system/modules/drafts/datacontainers/Drafts.php',
+	'Drafts\DataContainer\DraftableDataContainer' => 'system/modules/drafts/datacontainers/DraftableDataContainer.php',
+	'Drafts\DataContainer\Content' 				=> 'system/modules/drafts/datacontainers/Content.php',
+	'Drafts\DataContainer\Drafts' 				=> 'system/modules/drafts/datacontainers/Drafts.php',
 	
 	// drivers
 	'DC_DraftableTable' 									=> 'system/modules/drafts/drivers/DC_DraftableTable.php',
 	
 	// models
 	'ContentModel'											=> 'system/modules/drafts/models/ContentModel.php',
-	'Netzmacht\Drafts\Model\VersioningCollection'			=> 'system/modules/drafts/models/VersioningCollection.php',
-	'Netzmacht\Drafts\Model\VersioningModel' 				=> 'system/modules/drafts/models/VersioningModel.php',
-	'Netzmacht\Drafts\Model\DraftableCollection'			=> 'system/modules/drafts/models/DraftableCollection.php',
-	'Netzmacht\Drafts\Model\DraftableModel' 				=> 'system/modules/drafts/models/DraftableModel.php',
+	'Drafts\Model\VersioningCollection'			=> 'system/modules/drafts/models/VersioningCollection.php',
+	'Drafts\Model\VersioningModel' 				=> 'system/modules/drafts/models/VersioningModel.php',
+	'Drafts\Model\DraftableCollection'			=> 'system/modules/drafts/models/DraftableCollection.php',
+	'Drafts\Model\DraftableModel' 				=> 'system/modules/drafts/models/DraftableModel.php',
 	
 	// modules
 	'ModuleTasks' 											=> 'system/modules/drafts/modules/ModuleTasks.php',
 	
 	// widgets
-	'Netzmacht\Drafts\Widget\PreviewSwitch'					=> 'system/modules/drafts/widgets/PreviewSwitch.php',
+	'Drafts\Widget\PreviewSwitch'					=> 'system/modules/drafts/widgets/PreviewSwitch.php',
 	
 ));
+*/
 
 TemplateLoader::addFiles(array 
 (

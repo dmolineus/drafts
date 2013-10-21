@@ -55,7 +55,7 @@
 <?php
 if(!empty($GLOBALS['TL_CONFIG']['draftModules']))
 {
-	$objWidget = new Netzmacht\Drafts\Widget\PreviewSwitch();
+	$objWidget = new Drafts\Widget\PreviewSwitch();
 	echo $objWidget->generateLabel() . ' ';
 	echo $objWidget->generate();	
 }

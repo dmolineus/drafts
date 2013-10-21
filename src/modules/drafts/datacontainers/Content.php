@@ -12,8 +12,8 @@
  *  
  **/
  
-namespace Netzmacht\Drafts\DataContainer;
-use Netzmacht\Drafts\Model\DraftableModel;
+namespace Drafts\DataContainer;
+use Drafts\Model\DraftableModel;
 
 
 /**

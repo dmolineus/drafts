@@ -12,8 +12,8 @@
  *  
  **/
 
-namespace Netzmacht\Drafts\DataContainer;
-use Netzmacht\Drafts\Model\DraftableModel, Input, DC_Table, Contao\Database\Mysql\Result;
+namespace Drafts\DataContainer;
+use Drafts\Model\DraftableModel, Input, DC_Table, Contao\Database\Mysql\Result;
 
 
 // initialize draft modules
@@ -24,7 +24,7 @@ $GLOBALS['TL_CONFIG']['draftModules'] = unserialize($GLOBALS['TL_CONFIG']['draft
  * DraftableDataContainer provides draft functionality for tables with dynamic ptable
  * 
  */
-abstract class DraftableDataContainer extends \Netzmacht\Utils\DataContainer
+abstract class DraftableDataContainer extends \Utils\DataContainer
 {
 	
 	/**

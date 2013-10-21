@@ -12,7 +12,7 @@
  *  
  **/
  
-namespace Netzmacht\Drafts\Model;
+namespace Drafts\Model;
 use Controller, Model, Model\Collection, Database\Result;
 
 /**

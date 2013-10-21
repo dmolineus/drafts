@@ -70,7 +70,7 @@ class DiffController extends Backend
 		{
 			$this->strTable = \Input::get('table');
 
-			$objDraft = Netzmacht\Drafts\Model\DraftableModel::findByPK($this->strTable, \Input::get('id'));			
+			$objDraft = Drafts\Model\DraftableModel::findByPK($this->strTable, \Input::get('id'));
 			$objModel = $objDraft->getRelated();
 
 			if ($objDraft === null || $objModel === null)

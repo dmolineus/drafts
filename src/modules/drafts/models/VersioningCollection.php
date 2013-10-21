@@ -12,7 +12,7 @@
  *  
  **/
 
-namespace Netzmacht\Drafts\Model;
+namespace Drafts\Model;
 
 
 /**
