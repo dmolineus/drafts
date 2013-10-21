@@ -15,7 +15,7 @@
  * Initialize the system
  */
 define('TL_MODE', 'BE');
-require_once '../../initialize.php';
+require_once dirname(dirname(dirname($_SERVER['SCRIPT_FILENAME']))) . '/initialize.php';
 
 
 /**
