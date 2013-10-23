@@ -12,10 +12,10 @@
  *  
  **/
 
-ClassLoader::addNamespaces(array
-(
-	'Drafts',
-));
+NamespaceClassLoader::add('Drafts', 'system/modules/drafts/classes');
+
+ClassLoader::addClass('DC_Draftable', 'system/modules/drafts/drivers/DC_Draftable.php');
+
 
 /*
 ClassLoader::addClasses(array

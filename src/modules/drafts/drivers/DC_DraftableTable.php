@@ -14,7 +14,7 @@
 
 
 /**
- * DC_DraftableTable extends DC_Table with allowing switching the current id 
+ * DC_DraftableTable extends DC_Table and allows switching the current id
  */
 class DC_DraftableTable extends DC_Table
 {

@@ -12,13 +12,21 @@
  *  
  **/
 
- 
-// config
+/**
+ * Config
+ */
+$GLOBALS['TL_DCA']['tl_content']['config']['dataContainer'] = 'Draftable';
 $GLOBALS['TL_DCA']['tl_content']['config']['sql']['keys']['draftRelated'] 	= 'index';
+\Environment::getInstance();
+\Input::getInstance();
+$GLOBALS['TL_DCA']['tl_content']['dcatools']['controller'] = 'Drafts\Controller\Content';
 
-// fields
-$GLOBALS['TL_DCA']['tl_content']['fields']['cteAlias']['options_callback'] = array('Drafts\DataContainer\Content', 'getAlias');
-			
+
+/**
+ *
+ */
+//$GLOBALS['TL_DCA']['tl_content']['fields']['cteAlias']['options_callback'] = array('Drafts\DataContainer\Content', 'getAlias');
+
 $GLOBALS['TL_DCA']['tl_content']['fields']['draftRelated'] = array
 (
 	'foreignKey'				=> 'tl_content.id',

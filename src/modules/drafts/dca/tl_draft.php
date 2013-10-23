@@ -12,6 +12,16 @@ $GLOBALS['TL_DCA']['tl_draft'] = array
 		'dynamicPtable' => true,
 		'closed'        => true,
 
+		'sql' => array
+		(
+			'keys' => array
+			(
+				'id' => 'primary',
+				'pid' => 'index',
+				'ptable' => 'index'
+			)
+		),
+
 	),
 
 	'metapalettes' => array

@@ -33,8 +33,13 @@ if(!empty($GLOBALS['TL_CONFIG']['draftModules']))
 		$GLOBALS['TL_JAVASCRIPT'][] = 'system/modules/drafts/assets/script.js';
 	}
 
-	$GLOBALS['TL_HOOKS']['loadDataContainer'][] = array('Drafts\DataContainer\Content', 'onLoadDataContainer');
+	//$GLOBALS['TL_HOOKS']['loadDataContainer'][] = array('Drafts\DataContainer\Content', 'onLoadDataContainer');
 }
+
+$GLOBALS['BE_MOD']['content']['drafts'] = array
+(
+	'tables' => array('tl_draft', 'tl_content'),
+);
 
 // font awesome
 $GLOBALS['ICON_REPLACER']['buttons']['styleIcons'][] = array('edit', 'header_draft');
